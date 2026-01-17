@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
 import 'package:geo_attendance_new_ui/pages/register_page.dart';
@@ -40,6 +41,26 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   bool isMobile(BuildContext context) {
     return MediaQuery.of(context).size.width < 600;
+  }
+
+  FirebaseFirestore db = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    init();
+  }
+
+  void init() async {
+    db.collection("collection_credentials").doc("init").set({});
+    db.collection("collection_credentials").add({
+      "username": "admin",
+      "password": "admin",
+    });
+    db.collection("collection_credentials").add({
+      "username": "user",
+      "password": "pass",
+    });
   }
 
   @override
