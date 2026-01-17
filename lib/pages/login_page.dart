@@ -115,6 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
 
+              // Make button login to left a bit
               SizedBox(height: 30),
               OutlinedButton(
                 onPressed: () {

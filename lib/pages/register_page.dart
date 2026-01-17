@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:geo_attendance_new_ui/main.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() {
   runApp(const SignUpPage());
@@ -43,10 +46,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String verify_pw = '';
   String invalid_verifyPW = '';
+  String invalidEmail = '';
 
   TextEditingController idController = TextEditingController();
   TextEditingController pwController = TextEditingController();
   TextEditingController verifyPwController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String Status = '';
 
@@ -88,6 +96,30 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                     ),
                     Text('Status: $invalidID'),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+              SizedBox(
+                width: 300,
+                child: Column(
+                  children: <Widget>[
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (email) {
+                        final ok = RegExp(
+                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                        ).hasMatch(email.trim());
+                        setState(
+                          () => invalidEmail = ok
+                              ? 'Valid Email'
+                              : 'Invalid Email',
+                        );
+                      },
+                    ),
+                    Text('Status: $invalidEmail'),
                   ],
                 ),
               ),
@@ -141,16 +173,47 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               SizedBox(height: 30),
               OutlinedButton(
-                onPressed: () {
+                onPressed: () async {
                   // Handle id and password
                   if (invalidID == 'Valid ID' &&
                       invalidPW == 'Valid Password' &&
                       invalid_verifyPW == 'Passwords match') {
                     // Process to application after successful sign up
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-                    );
+                    setState(() {
+                      Status = 'Signing Up...';
+                    });
+
+                    try {
+                      // 1️⃣ Create Firebase Auth user
+                      UserCredential
+                      user = await _auth.createUserWithEmailAndPassword(
+                        email:
+                            '${idController.text.trim()}@geo.com', // Using ID as email placeholder
+                        password: pwController.text.trim(),
+                      );
+
+                      // 2️⃣ Save user info to Firestore
+                      await _firestore
+                          .collection('users')
+                          .doc(user.user!.uid)
+                          .set({
+                            'id': idController.text.trim(),
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+
+                      // 3️⃣ Success - navigate to login
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Sign Up Successful!')),
+                      );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => MyApp()),
+                      );
+                    } catch (e) {
+                      setState(() {
+                        Status = 'Sign Up Failed: $e';
+                      });
+                    }
                   } else {
                     // Show error or prompt user to correct inputs
                     setState(() {

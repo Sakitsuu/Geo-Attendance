@@ -45,23 +45,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
   FirebaseFirestore db = FirebaseFirestore.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    init();
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   init();
+  // }
 
-  void init() async {
-    db.collection("collection_credentials").doc("init").set({});
-    db.collection("collection_credentials").add({
-      "username": "admin",
-      "password": "admin",
-    });
-    db.collection("collection_credentials").add({
-      "username": "user",
-      "password": "pass",
-    });
-  }
+  // void init() async {
+  //   db.collection("collection_credentials").doc("init").set({});
+  //   db.collection("collection_credentials").add({
+  //     "username": "admin",
+  //     "password": "admin",
+  //   });
+  //   db.collection("collection_credentials").add({
+  //     "username": "user",
+  //     "password": "pass",
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
