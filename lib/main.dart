@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
 import 'package:geo_attendance_new_ui/pages/register_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, //
+  ).then((_) {
+    print("Firebase Initialized");
+  });
   runApp(const MyApp());
 }
 

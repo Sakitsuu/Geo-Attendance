@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146783026916",
+    "project_id": "geo-attendantgtr",
+    "storage_bucket": "geo-attendantgtr.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146783026916:android:a8c1993e29c13dbac1b6f1",
+        "android_client_info": {
+          "package_name": "com.example.geo_attendance_new_ui"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDun9DF7uVEJY5G8YigFFTRNYphUJ4ToB4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
