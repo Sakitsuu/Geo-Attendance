@@ -353,6 +353,20 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _label(String text) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.92),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Widget _input({
     required TextEditingController controller,
     required String hint,
