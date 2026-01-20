@@ -66,12 +66,47 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Center(child: Text(widget.title)),
-      ),
       body: isMobile(context) ? const MobileLayout() : const DesktopLayout(),
     );
+  }
+}
+
+class AppText {
+  static double title(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.03).clamp(18.0, 32.0);
+  }
+
+  static double subtitle(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.022).clamp(16.0, 26.0);
+  }
+
+  static double body(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.015).clamp(13.0, 18.0);
+  }
+}
+
+class AppIcon {
+  static double large(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.06).clamp(36.0, 80.0);
+  }
+
+  static double medium(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.045).clamp(28.0, 60.0);
+  }
+
+  static double small(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.12).clamp(100.0, 180.0);
+  }
+
+  static double huge(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.11).clamp(120.0, 180.0);
   }
 }
 
@@ -95,7 +130,7 @@ class MobileLayout extends StatelessWidget {
                   Text(
                     'Welcome to Geo Attendant',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: AppText.title(context),
                       fontFamily: 'MomoTrustDisplay',
                     ),
                   ),
@@ -108,7 +143,10 @@ class MobileLayout extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => LoginPage()),
                       );
                     },
-                    child: Text('Login'),
+                    child: Text(
+                      'Login',
+                      style: TextStyle(fontSize: AppText.subtitle(context)),
+                    ),
                   ),
                   SizedBox(height: 10),
                   OutlinedButton(
@@ -119,7 +157,10 @@ class MobileLayout extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => SignUpPage()),
                       );
                     },
-                    child: Text('Sign up'),
+                    child: Text(
+                      'Sign up',
+                      style: TextStyle(fontSize: AppText.subtitle(context)),
+                    ),
                   ),
                   SizedBox(height: 10),
                 ],
@@ -166,94 +207,266 @@ class DesktopLayout extends StatelessWidget {
   const DesktopLayout({super.key});
 
   final String Application_Logo = 'geo_attendance_logo.png';
+  final String Background = 'assets/Welcome_home_page.png';
+  final String Phone_desgin = 'assets/Welcome_home_page_copy.png';
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Row(
-        children: <Widget>[
-          // Left side of the screen (1/3 width)
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: Colors.blue[100],
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(Application_Logo),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Welcome to Geo Attendant',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontFamily: 'MomoTrustDisplay',
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    OutlinedButton(
-                      onPressed: () {
-                        // Login button action
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => LoginPage()),
-                        );
-                      },
-                      child: Text('Login'),
-                    ),
-                    SizedBox(height: 10),
-                    OutlinedButton(
-                      onPressed: () {
-                        // Sign up button action
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => SignUpPage()),
-                        );
-                      },
-                      child: Text('Sign up'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Right side of the screen (2/3 width)
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: Colors.blue,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      'Geo Attendant Website',
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'MomoTrustDisplay',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                      child: const Text(
-                        'Geo_Attendant is a location-based attendance system designed to record student attendance using their live geographic location. The system verifies a student’s presence by checking whether their real-time location falls within a predefined area, such as a classroom or campus, ensuring that attendance is marked only when the student is physically present. This approach helps reduce proxy attendance and improves accuracy and reliability compared to traditional manual methods. By leveraging location technology, Geo_Attendant provides a more efficient, transparent, and secure way for students to register their attendance in real time.',
-                        textAlign: TextAlign.center,
+    return BlueGradientBackground(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+          child: Row(
+            children: <Widget>[
+              // Left side of the screen (1/3 width)
+              Expanded(
+                flex: 2,
+                child: Center(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        'Geo Attendance',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppText.title(context),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                           fontFamily: 'MomoTrustDisplay',
                         ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        'Location-based attendance for Company',
+                        style: TextStyle(
+                          fontSize: AppText.body(context),
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      Container(
+                        width: 520, // control card width
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: <Widget>[
+                                Image.asset(
+                                  Application_Logo,
+                                  height: 90,
+                                  width: 90,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        'Welcome to Geo Attendant',
+                                        style: TextStyle(
+                                          fontSize: AppText.subtitle(context),
+                                          color: Colors.white,
+                                          fontFamily: 'MomoTrustDisplay',
+                                        ),
+                                      ),
+                                      Text(
+                                        'Location-based attendance for Company',
+                                        style: TextStyle(
+                                          fontSize: AppText.body(context),
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => LoginPage(),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      backgroundColor: Colors.blue,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Login',
+                                      style: TextStyle(
+                                        fontSize: AppText.body(context),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => SignUpPage(),
+                                        ),
+                                      );
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(
+                                        color: Colors.white,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Sign up',
+                                      style: TextStyle(
+                                        fontSize: AppText.body(context),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 25),
+                      SizedBox(
+                        width: 300,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            SizedBox(height: 10),
+                            Row(
+                              children: <Widget>[
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.grey[200],
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Prevent proxy employees',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              children: <Widget>[
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.grey[200],
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Real-time location verification',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              children: <Widget>[
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.grey[200],
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Faster check-in, accurate reports',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+
+              // Right side of the screen (2/3 width)
+              Expanded(
+                flex: 1,
+                child: Center(
+                  child: Image.asset(
+                    Phone_desgin,
+                    width: 520, // adjust as you like
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BlueGradientBackground extends StatelessWidget {
+  final Widget child;
+  const BlueGradientBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Gradient background
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF1E4ED8), // deep blue
+                Color(0xFF1F8EF1), // lighter blue
+              ],
             ),
           ),
-        ],
+        ),
+
+        // Decorative circles
+        Positioned(top: 100, left: -80, child: _circle(180, 0.08)),
+        Positioned(bottom: 120, right: -60, child: _circle(160, 0.06)),
+        Positioned(top: -50, right: 100, child: _circle(120, 0.05)),
+
+        // Page content
+        child,
+      ],
+    );
+  }
+
+  Widget _circle(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(opacity),
       ),
     );
   }
