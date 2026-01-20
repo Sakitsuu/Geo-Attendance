@@ -71,6 +71,45 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+class AppText {
+  static double title(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.03).clamp(18.0, 32.0);
+  }
+
+  static double subtitle(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.022).clamp(16.0, 26.0);
+  }
+
+  static double body(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.015).clamp(13.0, 18.0);
+  }
+}
+
+class AppIcon {
+  static double large(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.06).clamp(36.0, 80.0);
+  }
+
+  static double medium(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.045).clamp(28.0, 60.0);
+  }
+
+  static double small(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.12).clamp(100.0, 180.0);
+  }
+
+  static double huge(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.11).clamp(120.0, 180.0);
+  }
+}
+
 class MobileLayout extends StatelessWidget {
   const MobileLayout({super.key});
 
@@ -91,7 +130,7 @@ class MobileLayout extends StatelessWidget {
                   Text(
                     'Welcome to Geo Attendant',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: AppText.title(context),
                       fontFamily: 'MomoTrustDisplay',
                     ),
                   ),
@@ -104,7 +143,10 @@ class MobileLayout extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => LoginPage()),
                       );
                     },
-                    child: Text('Login'),
+                    child: Text(
+                      'Login',
+                      style: TextStyle(fontSize: AppText.subtitle(context)),
+                    ),
                   ),
                   SizedBox(height: 10),
                   OutlinedButton(
@@ -115,7 +157,10 @@ class MobileLayout extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => SignUpPage()),
                       );
                     },
-                    child: Text('Sign up'),
+                    child: Text(
+                      'Sign up',
+                      style: TextStyle(fontSize: AppText.subtitle(context)),
+                    ),
                   ),
                   SizedBox(height: 10),
                 ],
@@ -181,18 +226,21 @@ class DesktopLayout extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      const Text(
+                      Text(
                         'Geo Attendance',
                         style: TextStyle(
-                          fontSize: 36,
+                          fontSize: AppText.title(context),
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           fontFamily: 'MomoTrustDisplay',
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Location-based attendance for Company',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: AppText.body(context),
+                          color: Colors.grey,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -217,7 +265,7 @@ class DesktopLayout extends StatelessWidget {
                                   width: 90,
                                 ),
                                 const SizedBox(width: 16),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -225,14 +273,17 @@ class DesktopLayout extends StatelessWidget {
                                       Text(
                                         'Welcome to Geo Attendant',
                                         style: TextStyle(
-                                          fontSize: 20,
+                                          fontSize: AppText.subtitle(context),
                                           color: Colors.white,
                                           fontFamily: 'MomoTrustDisplay',
                                         ),
                                       ),
                                       Text(
                                         'Location-based attendance for Company',
-                                        style: TextStyle(color: Colors.grey),
+                                        style: TextStyle(
+                                          fontSize: AppText.body(context),
+                                          color: Colors.grey,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -260,7 +311,12 @@ class DesktopLayout extends StatelessWidget {
                                         vertical: 14,
                                       ),
                                     ),
-                                    child: const Text('Login'),
+                                    child: Text(
+                                      'Login',
+                                      style: TextStyle(
+                                        fontSize: AppText.body(context),
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -283,7 +339,12 @@ class DesktopLayout extends StatelessWidget {
                                         vertical: 14,
                                       ),
                                     ),
-                                    child: const Text('Sign up'),
+                                    child: Text(
+                                      'Sign up',
+                                      style: TextStyle(
+                                        fontSize: AppText.body(context),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
