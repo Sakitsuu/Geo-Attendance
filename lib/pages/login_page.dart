@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } on FirebaseAuthException {
       setState(() {
-        errorMessage = 'Login failed. Please check your credentials.';
+        errorMessage = 'Login failed. Please check your email and passwords.';
       });
     } catch (e) {
       setState(() {
