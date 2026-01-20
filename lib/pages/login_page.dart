@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/application_worker.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/application_manager.dart';
 import 'package:geo_attendance_new_ui/pages/register_page.dart';
+import 'package:geo_attendance_new_ui/pages/forgot_password.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -217,16 +218,22 @@ class _LoginPageState extends State<LoginPage> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton(
-                          onPressed: isLoading ? null : _resetPassword,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white.withOpacity(0.9),
-                            padding: EdgeInsets.zero,
-                          ),
-                          child: const Text(
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ForgotPasswordPage(),
+                                    ),
+                                  );
+                                },
+                          child: Text(
                             'Forgot Password?',
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
+                              color: Colors.white.withOpacity(0.95),
                             ),
                           ),
                         ),
