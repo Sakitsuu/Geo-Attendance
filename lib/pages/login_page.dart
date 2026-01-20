@@ -282,8 +282,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
 
-                      const SizedBox(height: 18),
-
                       // ✅ Register link
                       RichText(
                         text: TextSpan(
