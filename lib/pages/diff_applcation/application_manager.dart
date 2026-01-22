@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:geo_attendance_new_ui/main.dart';
+import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/ManagerRequestPage.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/dashboard.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/department.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/graphic.dart';
@@ -13,12 +13,9 @@ import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/security
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/setting.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
 
-void main() {
-  runApp(const ManagerPage());
-}
-
 class ManagerPage extends StatelessWidget {
   const ManagerPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -62,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
     GetAttendance(),
     DashboardSite(),
     GraphicSite(),
-    ProfileSite(),
+    ManagerRequestsPage(),
     DepartmentSite(),
     ListWorkerSite(),
     SchedulesSite(),
