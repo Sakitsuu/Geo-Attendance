@@ -8,7 +8,8 @@ import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/get_atte
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/notifications.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/profile.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/schedules.dart';
-import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/security.dart';
+import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/security.dart'
+    as privacy;
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/setting.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
 
@@ -66,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
     ListWorkerSite(),
     SchedulesSite(),
     SettingSite(),
-    SecuritySite(),
+    privacy.SecuritySite(),
   ];
 
   void select(int index) {
