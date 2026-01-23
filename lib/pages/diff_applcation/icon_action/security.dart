@@ -97,21 +97,23 @@ class _SecuritySiteState extends State<SecuritySite> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: cs.surface,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _topHeader(context, title: 'Privacy'),
+            _topHeader(context, cs: cs, title: 'Privacy'),
             const SizedBox(height: 20),
-
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
                     _sectionCard(
+                      cs: cs,
                       title: "Privacy Controls",
                       icon: Icons.privacy_tip_outlined,
                       child: Column(
@@ -124,11 +126,16 @@ class _SecuritySiteState extends State<SecuritySite> {
                                   p == LocationPermission.always ||
                                   p == LocationPermission.whileInUse;
 
+                              // status icon color: keep green/red for clarity
+                              final statusColor = (!shareLocation)
+                                  ? cs.onSurfaceVariant
+                                  : (allowed ? Colors.green : Colors.red);
+
                               return Container(
                                 margin: const EdgeInsets.only(top: 10),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: cs.surfaceContainer,
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Row(
@@ -136,11 +143,7 @@ class _SecuritySiteState extends State<SecuritySite> {
                                   children: [
                                     Icon(
                                       Icons.location_on_outlined,
-                                      color: (!shareLocation)
-                                          ? Colors.grey
-                                          : (allowed
-                                                ? Colors.green
-                                                : Colors.red),
+                                      color: statusColor,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -148,10 +151,11 @@ class _SecuritySiteState extends State<SecuritySite> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
+                                          Text(
                                             "Share Location",
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
+                                              color: cs.onSurface,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -161,9 +165,9 @@ class _SecuritySiteState extends State<SecuritySite> {
                                                 : (allowed
                                                       ? "Location permission is enabled. Attendance can verify your location."
                                                       : "Permission is not enabled yet. Tap 'Open Location Settings'."),
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 12,
-                                              color: Colors.black54,
+                                              color: cs.onSurfaceVariant,
                                             ),
                                           ),
                                           const SizedBox(height: 10),
@@ -192,11 +196,13 @@ class _SecuritySiteState extends State<SecuritySite> {
                     const SizedBox(height: 16),
 
                     _sectionCard(
+                      cs: cs,
                       title: "Data & Permissions",
                       icon: Icons.admin_panel_settings_outlined,
                       child: Column(
                         children: [
                           _actionTile(
+                            cs: cs,
                             icon: Icons.cleaning_services_outlined,
                             title: "Clear Cached Data",
                             subtitle: "Remove local cache on this device.",
@@ -207,11 +213,13 @@ class _SecuritySiteState extends State<SecuritySite> {
                             ),
                           ),
                           _actionTile(
+                            cs: cs,
                             icon: Icons.delete_outline,
                             title: "Delete Activity History",
                             subtitle: "Remove saved activity logs.",
                             onTap: () => _confirmDanger(
                               context,
+                              cs: cs,
                               title: "Delete Activity History?",
                               message:
                                   "This action cannot be undone. Continue?",
@@ -225,11 +233,13 @@ class _SecuritySiteState extends State<SecuritySite> {
                     const SizedBox(height: 16),
 
                     _sectionCard(
+                      cs: cs,
                       title: "Legal",
                       icon: Icons.article_outlined,
                       child: Column(
                         children: [
                           _actionTile(
+                            cs: cs,
                             icon: Icons.policy_outlined,
                             title: "Privacy Policy",
                             subtitle: "Read how we handle your data.",
@@ -254,27 +264,40 @@ class _SecuritySiteState extends State<SecuritySite> {
 }
 
 /// ✅ Shared UI widgets (header/cards/actions)
-Widget _topHeader(BuildContext context, {required String title}) {
+Widget _topHeader(
+  BuildContext context, {
+  required ColorScheme cs,
+  required String title,
+}) {
   return Container(
     padding: const EdgeInsets.all(16),
     margin: const EdgeInsets.all(8),
     height: 120,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(12),
-      color: Colors.grey[300],
+      color: cs.surfaceContainerHighest,
     ),
     child: Row(
       children: <Widget>[
-        Text(title, style: TextStyle(fontSize: AppText.title(context))),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: AppText.title(context),
+            color: cs.onSurface,
+          ),
+        ),
         const Spacer(),
-        const VerticalDivider(thickness: 2, color: Colors.grey),
-        const Icon(Icons.person, size: 50),
+        VerticalDivider(thickness: 2, color: cs.outline),
+        Icon(Icons.person, size: 50, color: cs.onSurface),
         const SizedBox(width: 8),
-        const SizedBox(
+        SizedBox(
           height: 50,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[Text('Name'), Text('@name')],
+            children: <Widget>[
+              Text('Name', style: TextStyle(color: cs.onSurface)),
+              Text('@name', style: TextStyle(color: cs.onSurfaceVariant)),
+            ],
           ),
         ),
       ],
@@ -283,6 +306,7 @@ Widget _topHeader(BuildContext context, {required String title}) {
 }
 
 Widget _sectionCard({
+  required ColorScheme cs,
   required String title,
   required IconData icon,
   required Widget child,
@@ -291,18 +315,22 @@ Widget _sectionCard({
     width: double.infinity,
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.grey[200],
+      color: cs.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(20),
     ),
     child: Column(
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.blue),
+            Icon(icon, color: cs.primary),
             const SizedBox(width: 10),
             Text(
               title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: cs.onSurface,
+              ),
             ),
           ],
         ),
@@ -314,6 +342,7 @@ Widget _sectionCard({
 }
 
 Widget _actionTile({
+  required ColorScheme cs,
   required IconData icon,
   required String title,
   required String subtitle,
@@ -326,12 +355,12 @@ Widget _actionTile({
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue),
+          Icon(icon, color: cs.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -339,20 +368,21 @@ Widget _actionTile({
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right),
+          Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
         ],
       ),
     ),
@@ -377,6 +407,7 @@ void _showInfo(BuildContext context, String title, String message) {
 
 void _confirmDanger(
   BuildContext context, {
+  required ColorScheme cs,
   required String title,
   required String message,
   required VoidCallback onConfirm,
@@ -392,7 +423,10 @@ void _confirmDanger(
           child: const Text("Cancel"),
         ),
         ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+          ),
           onPressed: onConfirm,
           child: const Text("Confirm"),
         ),

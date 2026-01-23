@@ -209,7 +209,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _loadProfile(),
         builder: (context, snapshot) {
@@ -218,7 +221,12 @@ class _ProfilePageState extends State<ProfilePage> {
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('Profile not found'));
+            return Center(
+              child: Text(
+                'Profile not found',
+                style: TextStyle(color: cs.onSurface),
+              ),
+            );
           }
 
           final data = snapshot.data!;
@@ -237,36 +245,39 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 166,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
+                    color: cs.surfaceContainerHighest,
                   ),
                   child: Row(
                     children: [
-                      const Text('Profile', style: TextStyle(fontSize: 28)),
-                      const VerticalDivider(thickness: 2),
+                      Text(
+                        'Profile',
+                        style: TextStyle(fontSize: 28, color: cs.onSurface),
+                      ),
+                      VerticalDivider(thickness: 2, color: cs.outline),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             'Good morning, $name!',
-                            style: const TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 20, color: cs.onSurface),
                           ),
                           Text(
                             'ID: $id',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           Text(
                             'Department: $department',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           Text(
                             'Role: $role',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
                       const Spacer(),
-                      const Icon(Icons.person, size: 48),
+                      Icon(Icons.person, size: 48, color: cs.onSurface),
                     ],
                   ),
                 ),
@@ -275,14 +286,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   children: [
                     _statCard(
+                      cs: cs,
                       title: 'Attendance Rate',
                       icon: Icons.alarm,
-                      value: '—', // later connect to attendance collection
+                      value: '—',
                     ),
                     _statCard(
+                      cs: cs,
                       title: 'Engagement Rate',
                       icon: Icons.arrow_outward,
-                      value: '—', // later connect to request/activity count
+                      value: '—',
                     ),
                   ],
                 ),
@@ -293,26 +306,26 @@ class _ProfilePageState extends State<ProfilePage> {
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
+                    color: cs.surfaceContainerHighest,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.error_outline),
+                          Icon(Icons.error_outline, color: cs.onSurface),
                           const SizedBox(width: 10),
-                          const Text(
+                          Text(
                             'Pending Approvals',
-                            style: TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 20, color: cs.onSurface),
                           ),
                           const Spacer(),
 
-                          // ✅ two buttons like your old UI
                           ElevatedButton(
                             onPressed: () => _openRequestDialog('time_off'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
                             ),
                             child: const Text('Time-off'),
                           ),
@@ -320,7 +333,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ElevatedButton(
                             onPressed: () => _openRequestDialog('leave'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
                             ),
                             child: const Text('Leave'),
                           ),
@@ -328,12 +342,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // ✅ real pending list from Firestore
                       StreamBuilder<QuerySnapshot>(
                         stream: _pendingRequestsStream(),
                         builder: (context, snap) {
                           if (snap.hasError) {
-                            return Text('Error: ${snap.error}');
+                            return Text(
+                              'Error: ${snap.error}',
+                              style: TextStyle(color: cs.onSurface),
+                            );
                           }
                           if (!snap.hasData) {
                             return const Center(
@@ -343,9 +359,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
                           final docs = snap.data!.docs;
                           if (docs.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Text('No pending requests.'),
+                            return Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                'No pending requests.',
+                                style: TextStyle(color: cs.onSurfaceVariant),
+                              ),
                             );
                           }
 
@@ -363,13 +382,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 margin: const EdgeInsets.symmetric(vertical: 6),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
-                                  color: Colors.grey[200],
+                                  color: cs.surfaceContainer,
                                 ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: Text(
                                         '${_typeLabel(type)} • ${_fmtDate(from)} → ${_fmtDate(to)}\n$reason',
+                                        style: TextStyle(color: cs.onSurface),
                                       ),
                                     ),
                                     const Chip(label: Text('pending')),
@@ -392,6 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _statCard({
+    required ColorScheme cs,
     required String title,
     required IconData icon,
     required String value,
@@ -403,22 +424,29 @@ class _ProfilePageState extends State<ProfilePage> {
         height: 150,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey[300],
+          color: cs.surfaceContainerHighest,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(title, style: const TextStyle(fontSize: 18)),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 18, color: cs.onSurface),
+                ),
                 const Spacer(),
-                Icon(icon),
+                Icon(icon, color: cs.onSurface),
               ],
             ),
             const Spacer(),
             Text(
               value,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: cs.onSurface,
+              ),
             ),
           ],
         ),

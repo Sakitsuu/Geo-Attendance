@@ -29,6 +29,8 @@ class _SchedulesSiteState extends State<SchedulesSite> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final int totalDays = daysInMonth(currentMonth);
     final int firstWeekday = DateTime(
       currentMonth.year,
@@ -36,8 +38,10 @@ class _SchedulesSiteState extends State<SchedulesSite> {
       1,
     ).weekday;
 
+    final now = DateTime.now();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: cs.surface, // ✅ was const Color(0xFFF7F9FC)
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -47,15 +51,19 @@ class _SchedulesSiteState extends State<SchedulesSite> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Schedule / Day Off',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
                 ),
                 Row(
-                  children: const [
-                    Icon(Icons.person),
-                    SizedBox(width: 8),
-                    Text('Name'),
+                  children: [
+                    Icon(Icons.person, color: cs.onSurface),
+                    const SizedBox(width: 8),
+                    Text('Name', style: TextStyle(color: cs.onSurface)),
                   ],
                 ),
               ],
@@ -67,25 +75,26 @@ class _SchedulesSiteState extends State<SchedulesSite> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: cs.surfaceContainerHighest, // ✅ was Colors.grey[200]
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chevron_left),
+                    icon: Icon(Icons.chevron_left, color: cs.onSurface),
                     onPressed: _previousMonth,
                   ),
                   Text(
                     DateFormat('MMMM yyyy').format(currentMonth),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.chevron_right),
+                    icon: Icon(Icons.chevron_right, color: cs.onSurface),
                     onPressed: _nextMonth,
                   ),
                 ],
@@ -99,7 +108,7 @@ class _SchedulesSiteState extends State<SchedulesSite> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: cs.surfaceContainerHighest, // ✅ was Colors.grey[200]
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
@@ -119,9 +128,17 @@ class _SchedulesSiteState extends State<SchedulesSite> {
                           ].map((day) {
                             return Expanded(
                               child: Center(
-                                child: Text(
-                                  day,
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                child: Builder(
+                                  builder: (context) {
+                                    final cs = Theme.of(context).colorScheme;
+                                    return Text(
+                                      day,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: cs.onSurface,
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             );
@@ -148,9 +165,9 @@ class _SchedulesSiteState extends State<SchedulesSite> {
                           final day = index - firstWeekday + 2;
 
                           final isToday =
-                              day == DateTime.now().day &&
-                              currentMonth.month == DateTime.now().month &&
-                              currentMonth.year == DateTime.now().year;
+                              day == now.day &&
+                              currentMonth.month == now.month &&
+                              currentMonth.year == now.year;
 
                           return GestureDetector(
                             onTap: () {
@@ -159,16 +176,21 @@ class _SchedulesSiteState extends State<SchedulesSite> {
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isToday
-                                    ? Colors.blue[100]
-                                    : Colors.white,
+                                    ? cs
+                                          .primaryContainer // ✅ was Colors.blue[100]
+                                    : cs.surface, // ✅ was Colors.white
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: cs.outlineVariant),
                               ),
                               child: Center(
                                 child: Text(
                                   day.toString(),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: isToday ? Colors.blue : Colors.black,
+                                    color: isToday
+                                        ? cs
+                                              .onPrimaryContainer // ✅ adapts
+                                        : cs.onSurface, // ✅ adapts
                                   ),
                                 ),
                               ),
