@@ -3,23 +3,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
-  runApp(const GraphicSite());
-}
+// void main() {
+//   runApp(const GraphicSite());
+// }
 
 class GraphicSite extends StatelessWidget {
   const GraphicSite({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const GraphicHomePage(title: 'Geo Attendant'),
-    );
+    return const GraphicHomePage(title: 'Geo Attendant');
   }
 }
 
@@ -88,6 +80,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final startKey = _dateKey(_selectedMonth); // yyyy-MM-01
     final endKey = _dateKey(
       _nextMonth(_selectedMonth),
@@ -106,7 +99,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
                 height: 166,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.grey[300],
+                  color: cs.surfaceContainerHighest,
                 ),
                 child: Row(
                   children: <Widget>[
@@ -120,7 +113,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
                     ),
 
                     const Spacer(),
-                    const VerticalDivider(thickness: 2, color: Colors.grey),
+                    VerticalDivider(thickness: 2, color: cs.outlineVariant),
                     const Icon(Icons.person, size: 50),
                     const SizedBox(width: 10),
                     SizedBox(
@@ -161,7 +154,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
                       margin: const EdgeInsets.all(8),
                       height: 514,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: LineChartMonthly(
@@ -181,7 +174,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
                       height: 514,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Colors.grey[300],
+                        color: cs.surfaceContainerHighest,
                       ),
                       child: BarChartMonthlyByDept(
                         db: _db,

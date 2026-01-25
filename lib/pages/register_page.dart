@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
-// import 'package:geo_attendance_new_ui/pages/login_page.dart'; // if you prefer go to login instead
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -15,7 +14,16 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // --- Controllers (same as yours) ---
+  // --- FocusNodes ---
+  final _idFocus = FocusNode();
+  final _nameFocus = FocusNode();
+  final _deptFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _passFocus = FocusNode();
+  final _confirmFocus = FocusNode();
+
+  // --- Controllers ---
   final TextEditingController idController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController departmentController = TextEditingController();
@@ -38,11 +46,19 @@ class _SignUpPageState extends State<SignUpPage> {
   String invalidEmail = '';
   String invalidPW = '';
   String invalidVerifyPW = '';
-  String status = '';
   String invalidPhone = '';
+  String status = '';
 
   @override
   void dispose() {
+    _idFocus.dispose();
+    _nameFocus.dispose();
+    _deptFocus.dispose();
+    _phoneFocus.dispose();
+    _emailFocus.dispose();
+    _passFocus.dispose();
+    _confirmFocus.dispose();
+
     idController.dispose();
     nameController.dispose();
     departmentController.dispose();
@@ -62,25 +78,26 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _validateAll() {
-    // final id = idController.text.trim();
-    // final name = nameController.text.trim();
-    // final dept = departmentController.text.trim();
-    // final email = emailController.text.trim();
+    final id = idController.text.trim();
+    final name = nameController.text.trim();
+    final dept = departmentController.text.trim();
+    final email = emailController.text.trim();
+    final phone = phoneController.text.trim();
     final pw = pwController.text;
     final confirm = verifyPwController.text;
-    final phone = phoneController.text.trim();
 
-    // invalidID = id.isEmpty ? 'ID is required' : '';
-    // invalidName = name.isEmpty ? 'Name is required' : '';
-    // invalidDepartment = dept.isEmpty ? 'Department is required' : '';
-    // invalidEmail = _isEmailValid(email) ? '' : 'Invalid email';
+    invalidID = id.isEmpty ? 'ID is required' : '';
+    invalidName = name.isEmpty ? 'Name is required' : '';
+    invalidDepartment = dept.isEmpty ? 'Department is required' : '';
+    invalidEmail = _isEmailValid(email) ? '' : 'Invalid email';
+    invalidPhone = _isPhoneValid(phone) ? '' : 'Invalid phone number';
+
     invalidPW = (pw.length >= 6 && pw.length <= 12)
         ? ''
         : 'Password 6-12 chars';
     invalidVerifyPW = (confirm == pw && confirm.isNotEmpty)
         ? ''
         : 'Passwords do not match';
-    invalidPhone = _isPhoneValid(phone) ? '' : 'Invalid phone number';
   }
 
   Future<void> _signUp() async {
@@ -93,6 +110,7 @@ class _SignUpPageState extends State<SignUpPage> {
         invalidName.isNotEmpty ||
         invalidDepartment.isNotEmpty ||
         invalidEmail.isNotEmpty ||
+        invalidPhone.isNotEmpty ||
         invalidPW.isNotEmpty ||
         invalidVerifyPW.isNotEmpty) {
       setState(() => status = 'Please fix the fields above.');
@@ -122,13 +140,13 @@ class _SignUpPageState extends State<SignUpPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Sign Up Successful!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign Up Successful! Please login.')),
+      );
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => LoginPage()),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
       );
     } on FirebaseAuthException catch (e) {
       setState(() => status = e.message ?? 'Sign Up Failed.');
@@ -141,9 +159,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    // final isWide = w >= 900;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -182,7 +197,7 @@ class _SignUpPageState extends State<SignUpPage> {
           // Glass card
           Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 520),
+              constraints: const BoxConstraints(maxWidth: 520),
               child: _glassCard(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -236,6 +251,11 @@ class _SignUpPageState extends State<SignUpPage> {
                               child: _input(
                                 controller: idController,
                                 hint: 'Enter ID',
+                                focusNode: _idFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_nameFocus),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
@@ -246,6 +266,11 @@ class _SignUpPageState extends State<SignUpPage> {
                               child: _input(
                                 controller: nameController,
                                 hint: 'Enter Name',
+                                focusNode: _nameFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_deptFocus),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
@@ -256,6 +281,11 @@ class _SignUpPageState extends State<SignUpPage> {
                               child: _input(
                                 controller: departmentController,
                                 hint: 'Enter Department',
+                                focusNode: _deptFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_phoneFocus),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
@@ -267,10 +297,14 @@ class _SignUpPageState extends State<SignUpPage> {
                                 controller: phoneController,
                                 hint: 'Enter Phone Number',
                                 keyboardType: TextInputType.phone,
+                                focusNode: _phoneFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_emailFocus),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
-
                             _fieldBox(
                               width: double.infinity,
                               label: 'Email',
@@ -279,6 +313,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                 controller: emailController,
                                 hint: 'Enter Email',
                                 keyboardType: TextInputType.emailAddress,
+                                focusNode: _emailFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_passFocus),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
@@ -289,6 +328,11 @@ class _SignUpPageState extends State<SignUpPage> {
                               child: _passwordInput(
                                 controller: pwController,
                                 hidden: hidePw,
+                                focusNode: _passFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(
+                                  context,
+                                ).requestFocus(_confirmFocus),
                                 toggle: () => setState(() => hidePw = !hidePw),
                                 onChanged: (_) => setState(_validateAll),
                               ),
@@ -300,6 +344,11 @@ class _SignUpPageState extends State<SignUpPage> {
                               child: _passwordInput(
                                 controller: verifyPwController,
                                 hidden: hideConfirm,
+                                focusNode: _confirmFocus,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) {
+                                  if (!isLoading) _signUp(); // ✅ Enter submits
+                                },
                                 toggle: () =>
                                     setState(() => hideConfirm = !hideConfirm),
                                 onChanged: (_) => setState(_validateAll),
@@ -356,37 +405,34 @@ class _SignUpPageState extends State<SignUpPage> {
                         const SizedBox(height: 10),
 
                         Center(
-                          child: GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 14,
-                                ),
-                                children: [
-                                  const TextSpan(
-                                    text: 'Already have an account? ',
-                                  ),
-                                  TextSpan(
-                                    text: 'Log In',
-                                    style: const TextStyle(
-                                      decoration: TextDecoration.underline,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const LoginPage(),
-                                          ),
-                                        ); // go back to login
-                                      },
-                                  ),
-                                ],
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
                               ),
+                              children: [
+                                const TextSpan(
+                                  text: 'Already have an account? ',
+                                ),
+                                TextSpan(
+                                  text: 'Log In',
+                                  style: const TextStyle(
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const LoginPage(),
+                                        ),
+                                      );
+                                    },
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -402,7 +448,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // ---- UI helpers (glass) ----
+  // ---- UI helpers ----
   static Widget _blob(double size, Color color) {
     return Container(
       width: size,
@@ -463,11 +509,15 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+  // ✅ Normal input (always black text)
   Widget _input({
     required TextEditingController controller,
     required String hint,
+    FocusNode? focusNode,
     TextInputType? keyboardType,
-    required void Function(String) onChanged,
+    TextInputAction? textInputAction,
+    void Function(String)? onSubmitted,
+    void Function(String)? onChanged,
   }) {
     return Container(
       height: 46,
@@ -479,22 +529,30 @@ class _SignUpPageState extends State<SignUpPage> {
       alignment: Alignment.center,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         onChanged: onChanged,
-        decoration: InputDecoration(
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        cursorColor: Colors.black,
+        decoration: const InputDecoration(
           border: InputBorder.none,
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black38),
-        ),
+          hintStyle: TextStyle(color: Colors.black38),
+        ).copyWith(hintText: hint),
       ),
     );
   }
 
+  // ✅ Password input (always black text + Enter flow)
   Widget _passwordInput({
     required TextEditingController controller,
     required bool hidden,
     required VoidCallback toggle,
     required void Function(String) onChanged,
+    FocusNode? focusNode,
+    TextInputAction? textInputAction,
+    void Function(String)? onSubmitted,
   }) {
     return Container(
       height: 46,
@@ -506,8 +564,13 @@ class _SignUpPageState extends State<SignUpPage> {
       alignment: Alignment.center,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         obscureText: hidden,
         onChanged: onChanged,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        cursorColor: Colors.black,
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: 'Password',

@@ -390,6 +390,8 @@ class _LoginPageState extends State<LoginPage> {
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         onSubmitted: onSubmitted,
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        cursorColor: Colors.black,
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
