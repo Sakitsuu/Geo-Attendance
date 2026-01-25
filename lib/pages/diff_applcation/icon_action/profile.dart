@@ -24,6 +24,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String get uid => _auth.currentUser!.uid;
 
+  // ✅ Choose the correct type for attendance.date
+  // If your attendance.date is stored as String "yyyy-MM-dd" keep this false.
+  // If your attendance.date is stored as Timestamp, set this true.
+  static const bool attendanceDateIsTimestamp = false;
+
   // ---------- helpers ----------
   String _dateKey(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
@@ -45,6 +50,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return "$y-$m-01";
   }
 
+  String _fmtDate(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
   Future<Map<String, dynamic>?> _loadProfile() async {
     final doc = await _db.collection('users').doc(uid).get();
     return doc.data();
@@ -63,11 +73,6 @@ class _ProfilePageState extends State<ProfilePage> {
   String _typeLabel(String type) {
     if (type == 'leave') return 'Leave';
     return 'Time-off';
-  }
-
-  String _fmtDate(DateTime? d) {
-    if (d == null) return '-';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
   // ---------- request dialog ----------
@@ -227,31 +232,52 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- Monthly Rate (starts 100%, drops by rules) ----------
-  // Rules (edit if you want):
-  // - LATE: -2
-  // - ACCEPTED time_off/leave day: -1
-  // - ABSENT day (no attendance AND not off): -5
+  // ✅ Attendance Rate (fixed)
+  // - shows real errors instead of just "Err"
+  // - adds orderBy('date') to satisfy query requirements
+  // - supports String or Timestamp attendance.date (toggle at top)
   Widget _monthlyRateWidget() {
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthNext = DateTime(now.year, now.month + 1, 1);
+    final monthStartDate = DateTime(now.year, now.month, 1);
+    final monthNextDate = DateTime(now.year, now.month + 1, 1);
 
-    final startKey = _monthStartKey(now);
-    final endKey = _nextMonthKey(now);
+    // used for clamping accepted off days
+    final monthStart = monthStartDate;
+    final monthNext = monthNextDate;
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: _db
+    Stream<QuerySnapshot> attendanceStream;
+
+    if (attendanceDateIsTimestamp) {
+      final startTs = Timestamp.fromDate(monthStartDate);
+      final endTs = Timestamp.fromDate(monthNextDate);
+
+      attendanceStream = _db
+          .collection('attendance')
+          .where('workerId', isEqualTo: uid)
+          .where('date', isGreaterThanOrEqualTo: startTs)
+          .where('date', isLessThan: endTs)
+          .orderBy('date')
+          .snapshots();
+    } else {
+      final startKey = _monthStartKey(now); // yyyy-MM-01
+      final endKey = _nextMonthKey(now); // next yyyy-MM-01
+
+      attendanceStream = _db
           .collection('attendance')
           .where('workerId', isEqualTo: uid)
           .where('date', isGreaterThanOrEqualTo: startKey)
           .where('date', isLessThan: endKey)
-          .snapshots(),
+          .orderBy('date')
+          .snapshots();
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: attendanceStream,
       builder: (context, attSnap) {
         if (attSnap.hasError) {
-          return const Text(
-            'Err',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          return Text(
+            'Error: ${attSnap.error}',
+            style: const TextStyle(fontSize: 12),
           );
         }
         if (attSnap.connectionState == ConnectionState.waiting) {
@@ -262,19 +288,32 @@ class _ProfilePageState extends State<ProfilePage> {
         }
 
         final Map<String, String> statusByDate = {};
+
         for (final doc in attSnap.data?.docs ?? []) {
           final m = doc.data() as Map<String, dynamic>;
-          final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
+
+          String dateKey = '';
+
+          if (attendanceDateIsTimestamp) {
+            final ts = m['date'];
+            if (ts is Timestamp) {
+              final d = ts.toDate();
+              dateKey = _dateKey(DateTime(d.year, d.month, d.day));
+            }
+          } else {
+            dateKey = (m['date'] ?? '').toString(); // yyyy-MM-dd
+          }
+
           final status = (m['status'] ?? '').toString(); // PRESENT / LATE
-          if (date.isEmpty) continue;
+          if (dateKey.isEmpty) continue;
 
           // keep worst (LATE worse than PRESENT)
-          final existing = statusByDate[date];
+          final existing = statusByDate[dateKey];
           if (existing == null) {
-            statusByDate[date] = status;
+            statusByDate[dateKey] = status;
           } else {
             if (existing != 'LATE' && status == 'LATE') {
-              statusByDate[date] = 'LATE';
+              statusByDate[dateKey] = 'LATE';
             }
           }
         }
@@ -287,9 +326,9 @@ class _ProfilePageState extends State<ProfilePage> {
               .snapshots(),
           builder: (context, reqSnap) {
             if (reqSnap.hasError) {
-              return const Text(
-                'Err',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              return Text(
+                'Error: ${reqSnap.error}',
+                style: const TextStyle(fontSize: 12),
               );
             }
             if (reqSnap.connectionState == ConnectionState.waiting) {
@@ -360,8 +399,7 @@ class _ProfilePageState extends State<ProfilePage> {
               }
             }
 
-            if (score < 0) score = 0;
-            if (score > 100) score = 100;
+            score = score.clamp(0, 100);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,9 +424,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- Engagement Rate (example rule) ----------
-  // Here: start 100%, each request in this month reduces -5
-  // (change rule if you want)
+  // ✅ Engagement Rate (fixed)
+  // - adds orderBy('createdAt') for range filter
+  // - shows real errors
   Widget _engagementRateWidget() {
     final now = DateTime.now();
     final monthStart = Timestamp.fromDate(DateTime(now.year, now.month, 1));
@@ -400,12 +438,13 @@ class _ProfilePageState extends State<ProfilePage> {
           .where('uid', isEqualTo: uid)
           .where('createdAt', isGreaterThanOrEqualTo: monthStart)
           .where('createdAt', isLessThan: monthNext)
+          .orderBy('createdAt')
           .snapshots(),
       builder: (context, snap) {
         if (snap.hasError) {
-          return const Text(
-            'Err',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          return Text(
+            'Error: ${snap.error}',
+            style: const TextStyle(fontSize: 12),
           );
         }
         if (snap.connectionState == ConnectionState.waiting) {
@@ -416,10 +455,8 @@ class _ProfilePageState extends State<ProfilePage> {
         }
 
         final count = snap.data?.docs.length ?? 0;
-
         int score = 100 - (count * 5);
-        if (score < 0) score = 0;
-        if (score > 100) score = 100;
+        score = score.clamp(0, 100);
 
         return Text(
           '$score%',
@@ -429,12 +466,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // IMPORTANT: avoid crash if user is not logged in
     if (_auth.currentUser == null) {
       return const Scaffold(
         body: Center(
@@ -522,7 +557,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _statCard(
                       cs: cs,
-                      title: 'Monthly Rate',
+                      title: 'Attendance Rate',
                       icon: Icons.alarm,
                       value: _monthlyRateWidget(),
                     ),
@@ -575,7 +610,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-
                       StreamBuilder<QuerySnapshot>(
                         stream: _pendingRequestsStream(),
                         builder: (context, snap) {
