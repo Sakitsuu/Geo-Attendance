@@ -362,8 +362,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                 final from = m['fromDate'];
                                 final to = m['toDate'];
 
-                                if (from is! Timestamp || to is! Timestamp)
+                                if (from is! Timestamp || to is! Timestamp) {
                                   continue;
+                                }
 
                                 final fromDate = DateTime(
                                   from.toDate().year,

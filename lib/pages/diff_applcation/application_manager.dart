@@ -6,7 +6,6 @@ import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/graphic.
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/list_worker.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/get_attendant.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/notifications.dart';
-import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/profile.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/schedules.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/security.dart'
     as privacy;
