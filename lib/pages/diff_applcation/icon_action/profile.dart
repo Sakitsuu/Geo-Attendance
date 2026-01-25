@@ -19,17 +19,37 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String get uid => _auth.currentUser!.uid;
+
+  // ---------- helpers ----------
+  String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day"; // yyyy-MM-dd
+  }
+
+  String _monthStartKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    return "$y-$m-01";
+  }
+
+  String _nextMonthKey(DateTime d) {
+    final next = DateTime(d.year, d.month + 1, 1);
+    final y = next.year.toString().padLeft(4, '0');
+    final m = next.month.toString().padLeft(2, '0');
+    return "$y-$m-01";
+  }
 
   Future<Map<String, dynamic>?> _loadProfile() async {
     final doc = await _db.collection('users').doc(uid).get();
     return doc.data();
   }
 
-  // ✅ pending requests stream (live)
   Stream<QuerySnapshot> _pendingRequestsStream() {
     return _db
         .collection('requests')
@@ -40,7 +60,17 @@ class _ProfilePageState extends State<ProfilePage> {
         .snapshots();
   }
 
-  // ✅ Request dialog (Time-off / Leave) + dates + reason
+  String _typeLabel(String type) {
+    if (type == 'leave') return 'Leave';
+    return 'Time-off';
+  }
+
+  String _fmtDate(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  // ---------- request dialog ----------
   Future<void> _openRequestDialog(String type) async {
     DateTime? fromDate;
     DateTime? toDate;
@@ -197,19 +227,224 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _typeLabel(String type) {
-    if (type == 'leave') return 'Leave';
-    return 'Time-off';
+  // ---------- Monthly Rate (starts 100%, drops by rules) ----------
+  // Rules (edit if you want):
+  // - LATE: -2
+  // - ACCEPTED time_off/leave day: -1
+  // - ABSENT day (no attendance AND not off): -5
+  Widget _monthlyRateWidget() {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthNext = DateTime(now.year, now.month + 1, 1);
+
+    final startKey = _monthStartKey(now);
+    final endKey = _nextMonthKey(now);
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('attendance')
+          .where('workerId', isEqualTo: uid)
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .where('date', isLessThan: endKey)
+          .snapshots(),
+      builder: (context, attSnap) {
+        if (attSnap.hasError) {
+          return const Text(
+            'Err',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+        if (attSnap.connectionState == ConnectionState.waiting) {
+          return const Text(
+            '…',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+
+        final Map<String, String> statusByDate = {};
+        for (final doc in attSnap.data?.docs ?? []) {
+          final m = doc.data() as Map<String, dynamic>;
+          final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
+          final status = (m['status'] ?? '').toString(); // PRESENT / LATE
+          if (date.isEmpty) continue;
+
+          // keep worst (LATE worse than PRESENT)
+          final existing = statusByDate[date];
+          if (existing == null) {
+            statusByDate[date] = status;
+          } else {
+            if (existing != 'LATE' && status == 'LATE') {
+              statusByDate[date] = 'LATE';
+            }
+          }
+        }
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: _db
+              .collection('requests')
+              .where('uid', isEqualTo: uid)
+              .where('status', isEqualTo: 'accepted')
+              .snapshots(),
+          builder: (context, reqSnap) {
+            if (reqSnap.hasError) {
+              return const Text(
+                'Err',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              );
+            }
+            if (reqSnap.connectionState == ConnectionState.waiting) {
+              return const Text(
+                '…',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              );
+            }
+
+            final Set<String> offDays = {};
+
+            for (final doc in reqSnap.data?.docs ?? []) {
+              final m = doc.data() as Map<String, dynamic>;
+              final fromTs = m['fromDate'];
+              final toTs = m['toDate'];
+              if (fromTs is! Timestamp || toTs is! Timestamp) continue;
+
+              DateTime from = fromTs.toDate();
+              DateTime to = toTs.toDate();
+              from = DateTime(from.year, from.month, from.day);
+              to = DateTime(to.year, to.month, to.day);
+
+              // clamp to this month
+              if (to.isBefore(monthStart) || from.isAfter(monthNext)) continue;
+
+              final start = from.isBefore(monthStart) ? monthStart : from;
+              final end = to.isAfter(monthNext)
+                  ? monthNext.subtract(const Duration(days: 1))
+                  : to;
+
+              for (
+                DateTime d = start;
+                !d.isAfter(end);
+                d = d.add(const Duration(days: 1))
+              ) {
+                offDays.add(_dateKey(d));
+              }
+            }
+
+            int score = 100;
+            int lateDays = 0;
+            int absentDays = 0;
+            int offCount = 0;
+
+            final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
+            for (int day = 1; day <= daysInMonth; day++) {
+              final d = DateTime(now.year, now.month, day);
+              final key = _dateKey(d);
+
+              final st = statusByDate[key]; // PRESENT / LATE / null
+              final isOff = offDays.contains(key);
+
+              if (st == 'LATE') {
+                lateDays++;
+                score -= 2;
+              }
+
+              if (isOff) {
+                offCount++;
+                score -= 1;
+              }
+
+              // absent: no attendance doc and not off
+              if (st == null && !isOff) {
+                absentDays++;
+                score -= 5;
+              }
+            }
+
+            if (score < 0) score = 0;
+            if (score > 100) score = 100;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$score%',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Late: $lateDays • Absent: $absentDays • Off: $offCount',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
-  String _fmtDate(DateTime? d) {
-    if (d == null) return '-';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  // ---------- Engagement Rate (example rule) ----------
+  // Here: start 100%, each request in this month reduces -5
+  // (change rule if you want)
+  Widget _engagementRateWidget() {
+    final now = DateTime.now();
+    final monthStart = Timestamp.fromDate(DateTime(now.year, now.month, 1));
+    final monthNext = Timestamp.fromDate(DateTime(now.year, now.month + 1, 1));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('requests')
+          .where('uid', isEqualTo: uid)
+          .where('createdAt', isGreaterThanOrEqualTo: monthStart)
+          .where('createdAt', isLessThan: monthNext)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return const Text(
+            'Err',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Text(
+            '…',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+
+        final count = snap.data?.docs.length ?? 0;
+
+        int score = 100 - (count * 5);
+        if (score < 0) score = 0;
+        if (score > 100) score = 100;
+
+        return Text(
+          '$score%',
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        );
+      },
+    );
   }
 
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    // IMPORTANT: avoid crash if user is not logged in
+    if (_auth.currentUser == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'You must be logged in.',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -282,25 +517,25 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
 
-                // STATS (still dummy for now)
+                // STATS
                 Row(
                   children: [
                     _statCard(
                       cs: cs,
-                      title: 'Attendance Rate',
+                      title: 'Monthly Rate',
                       icon: Icons.alarm,
-                      value: '—',
+                      value: _monthlyRateWidget(),
                     ),
                     _statCard(
                       cs: cs,
                       title: 'Engagement Rate',
                       icon: Icons.arrow_outward,
-                      value: '—',
+                      value: _engagementRateWidget(),
                     ),
                   ],
                 ),
 
-                // REQUESTS (REAL)
+                // REQUESTS
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),
@@ -320,7 +555,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             style: TextStyle(fontSize: 20, color: cs.onSurface),
                           ),
                           const Spacer(),
-
                           ElevatedButton(
                             onPressed: () => _openRequestDialog('time_off'),
                             style: ElevatedButton.styleFrom(
@@ -351,13 +585,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               style: TextStyle(color: cs.onSurface),
                             );
                           }
-                          if (!snap.hasData) {
+                          if (snap.connectionState == ConnectionState.waiting) {
                             return const Center(
                               child: CircularProgressIndicator(),
                             );
                           }
 
-                          final docs = snap.data!.docs;
+                          final docs = snap.data?.docs ?? [];
                           if (docs.isEmpty) {
                             return Padding(
                               padding: const EdgeInsets.all(12),
@@ -415,7 +649,7 @@ class _ProfilePageState extends State<ProfilePage> {
     required ColorScheme cs,
     required String title,
     required IconData icon,
-    required String value,
+    required Widget value,
   }) {
     return Expanded(
       child: Container(
@@ -440,14 +674,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             const Spacer(),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: cs.onSurface,
-              ),
-            ),
+            value,
           ],
         ),
       ),

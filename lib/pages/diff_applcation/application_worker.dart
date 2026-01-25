@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geo_attendance_new_ui/main.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/dashboard.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/department.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/graphic.dart';

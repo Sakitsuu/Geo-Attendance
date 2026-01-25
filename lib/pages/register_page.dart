@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:geo_attendance_new_ui/main.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
 // import 'package:geo_attendance_new_ui/pages/login_page.dart'; // if you prefer go to login instead
 
@@ -23,6 +22,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController pwController = TextEditingController();
   final TextEditingController verifyPwController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -39,6 +39,7 @@ class _SignUpPageState extends State<SignUpPage> {
   String invalidPW = '';
   String invalidVerifyPW = '';
   String status = '';
+  String invalidPhone = '';
 
   @override
   void dispose() {
@@ -48,11 +49,16 @@ class _SignUpPageState extends State<SignUpPage> {
     emailController.dispose();
     pwController.dispose();
     verifyPwController.dispose();
+    phoneController.dispose();
     super.dispose();
   }
 
   bool _isEmailValid(String email) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.trim());
+  }
+
+  bool _isPhoneValid(String phone) {
+    return RegExp(r'^[0-9]{8,15}$').hasMatch(phone.trim());
   }
 
   void _validateAll() {
@@ -62,6 +68,7 @@ class _SignUpPageState extends State<SignUpPage> {
     // final email = emailController.text.trim();
     final pw = pwController.text;
     final confirm = verifyPwController.text;
+    final phone = phoneController.text.trim();
 
     // invalidID = id.isEmpty ? 'ID is required' : '';
     // invalidName = name.isEmpty ? 'Name is required' : '';
@@ -73,6 +80,7 @@ class _SignUpPageState extends State<SignUpPage> {
     invalidVerifyPW = (confirm == pw && confirm.isNotEmpty)
         ? ''
         : 'Passwords do not match';
+    invalidPhone = _isPhoneValid(phone) ? '' : 'Invalid phone number';
   }
 
   Future<void> _signUp() async {
@@ -106,6 +114,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'id': idController.text.trim(),
         'name': nameController.text.trim(),
         'department': departmentController.text.trim(),
+        'phone': phoneController.text.trim(),
         'role': 'worker',
         'email': user.user!.email,
         'createdAt': FieldValue.serverTimestamp(),
@@ -250,6 +259,18 @@ class _SignUpPageState extends State<SignUpPage> {
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
+                            _fieldBox(
+                              width: double.infinity,
+                              label: 'Phone Number',
+                              errorText: invalidPhone,
+                              child: _input(
+                                controller: phoneController,
+                                hint: 'Enter Phone Number',
+                                keyboardType: TextInputType.phone,
+                                onChanged: (_) => setState(_validateAll),
+                              ),
+                            ),
+
                             _fieldBox(
                               width: double.infinity,
                               label: 'Email',
