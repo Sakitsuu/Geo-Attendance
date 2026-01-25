@@ -7,15 +7,8 @@ class NotificationSite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const NotificationPage(),
-    );
+    // ✅ IMPORTANT: no MaterialApp here
+    return const NotificationPage();
   }
 }
 
@@ -40,7 +33,10 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: AppBar(title: const Text('Notifications')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _notifStream(),
@@ -50,12 +46,22 @@ class _NotificationPageState extends State<NotificationPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: TextStyle(color: cs.onSurface),
+              ),
+            );
           }
 
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
-            return const Center(child: Text('No notifications yet'));
+            return Center(
+              child: Text(
+                'No notifications yet',
+                style: TextStyle(color: cs.onSurface),
+              ),
+            );
           }
 
           return ListView.separated(
@@ -85,14 +91,15 @@ class _NotificationPageState extends State<NotificationPage> {
               return Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  // ✅ theme-based colors (dark mode safe)
+                  color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: cs.outlineVariant),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(icon, size: 26),
+                    Icon(icon, size: 26, color: cs.onSurface),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -103,9 +110,10 @@ class _NotificationPageState extends State<NotificationPage> {
                               Expanded(
                                 child: Text(
                                   title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
+                                    color: cs.onSurface,
                                   ),
                                 ),
                               ),
@@ -115,14 +123,14 @@ class _NotificationPageState extends State<NotificationPage> {
                           const SizedBox(height: 6),
                           Text(
                             message,
-                            style: TextStyle(color: Colors.grey[800]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           if (dateText.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
                               dateText,
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: cs.onSurfaceVariant,
                                 fontSize: 12,
                               ),
                             ),
@@ -162,6 +170,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
     String label = status.isEmpty ? 'pending' : status;
 
+    // Keeping these status colors is OK (they still look fine in dark mode)
     Color bg;
     Color fg;
 

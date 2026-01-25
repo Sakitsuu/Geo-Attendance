@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SecuritySite extends StatefulWidget {
   const SecuritySite({super.key});
@@ -8,6 +10,9 @@ class SecuritySite extends StatefulWidget {
   @override
   State<SecuritySite> createState() => _SecuritySiteState();
 }
+
+final _auth = FirebaseAuth.instance;
+final _db = FirebaseFirestore.instance;
 
 class AppText {
   static double title(BuildContext context) {
@@ -287,16 +292,28 @@ Widget _topHeader(
           ),
         ),
         const Spacer(),
-        VerticalDivider(thickness: 2, color: cs.outline),
-        Icon(Icons.person, size: 50, color: cs.onSurface),
-        const SizedBox(width: 8),
+        VerticalDivider(thickness: 2, color: cs.outlineVariant),
+        const Icon(Icons.person, size: 50),
+        const SizedBox(width: 10),
         SizedBox(
           height: 50,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('Name', style: TextStyle(color: cs.onSurface)),
-              Text('@name', style: TextStyle(color: cs.onSurfaceVariant)),
+              const Text('Name'),
+              StreamBuilder<DocumentSnapshot>(
+                stream: _db
+                    .collection('users')
+                    .doc(_auth.currentUser?.uid)
+                    .snapshots(),
+                builder: (context, snap) {
+                  if (!snap.hasData || !snap.data!.exists) {
+                    return const Text('-');
+                  }
+                  final m = snap.data!.data() as Map<String, dynamic>;
+                  return Text((m['name'] ?? '-').toString());
+                },
+              ),
             ],
           ),
         ),
