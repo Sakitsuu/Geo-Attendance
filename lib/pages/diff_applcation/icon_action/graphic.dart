@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   runApp(const GraphicSite());
@@ -16,30 +18,91 @@ class GraphicSite extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         fontFamily: 'MomoTrustDisplay',
       ),
-      home: const MyHomePage(title: 'Geo Attendant'),
+      home: const GraphicHomePage(title: 'Geo Attendant'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class GraphicHomePage extends StatefulWidget {
+  const GraphicHomePage({super.key, required this.title});
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<GraphicHomePage> createState() => _GraphicHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _GraphicHomePageState extends State<GraphicHomePage> {
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
+
+  String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+
+  DateTime _nextMonth(DateTime d) => DateTime(d.year, d.month + 1, 1);
+
+  int _daysInMonth(DateTime d) => DateTime(d.year, d.month + 1, 0).day;
+
+  String _monthLabel(DateTime d) {
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return "${names[d.month - 1]} ${d.year}";
+  }
+
+  Future<void> _pickMonth() async {
+    // Use date picker, but we only take Year + Month
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedMonth = DateTime(picked.year, picked.month, 1);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final startKey = _dateKey(_selectedMonth); // yyyy-MM-01
+    final endKey = _dateKey(
+      _nextMonth(_selectedMonth),
+    ); // next month yyyy-MM-01
+    final days = _daysInMonth(_selectedMonth);
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Center(
           child: Column(
             children: <Widget>[
+              // ================= HEADER =================
               Container(
-                padding: EdgeInsets.all(16),
-                margin: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(8),
                 height: 166,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
@@ -47,48 +110,85 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 child: Row(
                   children: <Widget>[
-                    Text('Graphics', style: TextStyle(fontSize: 32)),
-                    SizedBox(width: 10),
-                    Spacer(),
-                    VerticalDivider(thickness: 2, color: Colors.grey),
-                    Icon(Icons.person, size: 50),
+                    const Text('Graphics', style: TextStyle(fontSize: 32)),
+                    const SizedBox(width: 16),
+
+                    OutlinedButton.icon(
+                      onPressed: _pickMonth,
+                      icon: const Icon(Icons.calendar_month),
+                      label: Text(_monthLabel(_selectedMonth)),
+                    ),
+
+                    const Spacer(),
+                    const VerticalDivider(thickness: 2, color: Colors.grey),
+                    const Icon(Icons.person, size: 50),
+                    const SizedBox(width: 10),
                     SizedBox(
                       height: 50,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: <Widget>[Text('Name'), Text('@name')],
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Text('Name'),
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: _db
+                                .collection('users')
+                                .doc(_auth.currentUser?.uid)
+                                .snapshots(),
+                            builder: (context, snap) {
+                              if (!snap.hasData || !snap.data!.exists) {
+                                return const Text('-');
+                              }
+                              final m =
+                                  snap.data!.data() as Map<String, dynamic>;
+                              return Text((m['name'] ?? '-').toString());
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 40),
+
+              const SizedBox(height: 40),
+
               Row(
                 children: <Widget>[
                   Expanded(
                     flex: 2,
                     child: Container(
-                      padding: EdgeInsets.all(16),
-                      margin: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.all(8),
                       height: 514,
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: SizedBox(child: LineChartGraphic()),
+                      child: LineChartMonthly(
+                        db: _db,
+                        startKey: startKey,
+                        endKey: endKey,
+                        daysInMonth: days,
+                        selectedMonth: _selectedMonth,
+                      ),
                     ),
                   ),
                   Expanded(
                     flex: 1,
                     child: Container(
-                      padding: EdgeInsets.all(16),
-                      margin: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.all(8),
                       height: 514,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: Colors.grey[300],
                       ),
-                      child: SizedBox(child: BarChartGraphic()),
+                      child: BarChartMonthlyByDept(
+                        db: _db,
+                        startKey: startKey,
+                        endKey: endKey,
+                        daysInMonth: days,
+                      ),
                     ),
                   ),
                 ],
@@ -101,8 +201,35 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class LineChartGraphic extends StatelessWidget {
-  const LineChartGraphic({super.key});
+/* =========================================================
+   LINE CHART (MONTHLY)
+   Daily attendance % for the selected month
+   % = attendanceDocsThatDay / totalUsers * 100
+   Queries attendance by date range:
+     date >= startKey and date < endKey
+   ========================================================= */
+class LineChartMonthly extends StatelessWidget {
+  const LineChartMonthly({
+    super.key,
+    required this.db,
+    required this.startKey,
+    required this.endKey,
+    required this.daysInMonth,
+    required this.selectedMonth,
+  });
+
+  final FirebaseFirestore db;
+  final String startKey;
+  final String endKey;
+  final int daysInMonth;
+  final DateTime selectedMonth;
+
+  String _dayKey(int day) {
+    final y = selectedMonth.year.toString().padLeft(4, '0');
+    final m = selectedMonth.month.toString().padLeft(2, '0');
+    final d = day.toString().padLeft(2, '0');
+    return "$y-$m-$d";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,82 +238,144 @@ class LineChartGraphic extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Attendance Comparison Chart",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: db.collection('users').snapshots(),
+          builder: (context, userSnap) {
+            final totalUsers = userSnap.data?.docs.length ?? 0;
+            if (totalUsers == 0) {
+              return const Center(child: Text("No users found"));
+            }
 
-            SizedBox(
-              height: 240,
-              child: LineChart(
-                LineChartData(
-                  minX: 1,
-                  maxX: 16,
-                  minY: 0,
-                  maxY: 100,
+            return StreamBuilder<QuerySnapshot>(
+              stream: db
+                  .collection('attendance')
+                  .where('date', isGreaterThanOrEqualTo: startKey)
+                  .where('date', isLessThan: endKey)
+                  .snapshots(),
+              builder: (context, attSnap) {
+                if (!attSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
+                // Count per day
+                final Map<int, int> countByDay = {
+                  for (int i = 1; i <= daysInMonth; i++) i: 0,
+                };
 
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 20,
-                        getTitlesWidget: (value, meta) =>
-                            Text('${value.toInt()}%'),
+                for (final doc in attSnap.data!.docs) {
+                  final m = doc.data() as Map<String, dynamic>? ?? {};
+                  final status = (m['status'] ?? '').toString();
+                  if (status != 'PRESENT' && status != 'LATE') continue;
+
+                  final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
+                  if (date.length >= 10) {
+                    final dayStr = date.substring(8, 10);
+                    final day = int.tryParse(dayStr);
+                    if (day != null && day >= 1 && day <= daysInMonth) {
+                      countByDay[day] = (countByDay[day] ?? 0) + 1;
+                    }
+                  }
+                }
+
+                final spots = <FlSpot>[];
+                for (int day = 1; day <= daysInMonth; day++) {
+                  final attended = countByDay[day] ?? 0;
+                  final percent = (attended / totalUsers) * 100.0;
+                  spots.add(FlSpot(day.toDouble(), percent));
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Monthly Attendance (Daily %)",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) =>
-                            Text('${value.toInt()} Aug'),
-                      ),
-                    ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text("Total employees: $totalUsers"),
+                    const SizedBox(height: 20),
 
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: true,
-                      barWidth: 3,
-                      dotData: FlDotData(show: true),
-                      belowBarData: BarAreaData(show: true),
-                      spots: const [
-                        FlSpot(1, 58),
-                        FlSpot(2, 72),
-                        FlSpot(3, 58),
-                        FlSpot(4, 75),
-                        FlSpot(7, 91),
-                        FlSpot(8, 54),
-                        FlSpot(9, 72),
-                        FlSpot(10, 38),
-                        FlSpot(11, 60),
-                        FlSpot(14, 72),
-                        FlSpot(15, 58),
-                        FlSpot(16, 38),
-                      ],
+                    SizedBox(
+                      height: 260,
+                      child: LineChart(
+                        LineChartData(
+                          minX: 1,
+                          maxX: daysInMonth.toDouble(),
+                          minY: 0,
+                          maxY: 100,
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 20,
+                                getTitlesWidget: (value, meta) =>
+                                    Text('${value.toInt()}%'),
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 5, // show every 5 days
+                                getTitlesWidget: (value, meta) {
+                                  final d = value.toInt();
+                                  if (d < 1 || d > daysInMonth) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Text('$d');
+                                },
+                              ),
+                            ),
+                          ),
+                          lineBarsData: [
+                            LineChartBarData(
+                              isCurved: true,
+                              barWidth: 3,
+                              dotData: FlDotData(show: false),
+                              belowBarData: BarAreaData(show: true),
+                              spots: spots,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                ),
-              ),
-            ),
-          ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class BarChartGraphic extends StatelessWidget {
-  const BarChartGraphic({super.key});
+/* =========================================================
+   BAR CHART (MONTHLY) by Department
+   % = (attendance docs in month for dept) / (usersInDept * daysInMonth) * 100
+   Requires:
+     - users.department
+     - attendance.department
+   ========================================================= */
+class BarChartMonthlyByDept extends StatelessWidget {
+  const BarChartMonthlyByDept({
+    super.key,
+    required this.db,
+    required this.startKey,
+    required this.endKey,
+    required this.daysInMonth,
+  });
 
-  BarChartGroupData _bar(int x, double y, {bool highlight = false}) {
+  final FirebaseFirestore db;
+  final String startKey;
+  final String endKey;
+  final int daysInMonth;
+
+  BarChartGroupData _bar(int x, double y) {
     return BarChartGroupData(
       x: x,
       barRods: [
@@ -206,60 +395,122 @@ class BarChartGraphic extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Weekly Attendance",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: db.collection('users').snapshots(),
+          builder: (context, userSnap) {
+            if (!userSnap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            SizedBox(
-              height: 240,
-              child: BarChart(
-                BarChartData(
-                  maxY: 100,
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
+            // total users per dept
+            final Map<String, int> totalByDept = {};
+            for (final doc in userSnap.data!.docs) {
+              final m = doc.data() as Map<String, dynamic>? ?? {};
+              final dept = (m['department'] ?? 'Unknown').toString();
+              totalByDept[dept] = (totalByDept[dept] ?? 0) + 1;
+            }
 
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 20,
-                        getTitlesWidget: (value, meta) =>
-                            Text('${value.toInt()}%'),
+            final depts = totalByDept.keys.toList()..sort();
+            final shownDepts = depts.take(5).toList(); // keep chart clean
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: db
+                  .collection('attendance')
+                  .where('date', isGreaterThanOrEqualTo: startKey)
+                  .where('date', isLessThan: endKey)
+                  .snapshots(),
+              builder: (context, attSnap) {
+                if (!attSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final Map<String, int> attByDept = {
+                  for (final d in shownDepts) d: 0,
+                };
+
+                for (final doc in attSnap.data!.docs) {
+                  final m = doc.data() as Map<String, dynamic>? ?? {};
+                  final status = (m['status'] ?? '').toString();
+                  if (status != 'PRESENT' && status != 'LATE') continue;
+
+                  final dept = (m['department'] ?? '').toString();
+                  if (attByDept.containsKey(dept)) {
+                    attByDept[dept] = (attByDept[dept] ?? 0) + 1;
+                  }
+                }
+
+                final groups = <BarChartGroupData>[];
+                for (int i = 0; i < shownDepts.length; i++) {
+                  final dept = shownDepts[i];
+                  final usersInDept = totalByDept[dept] ?? 0;
+                  final denom = usersInDept * daysInMonth; // month capacity
+                  final attended = attByDept[dept] ?? 0;
+                  final percent = denom == 0 ? 0.0 : (attended / denom) * 100.0;
+                  groups.add(_bar(i, percent));
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Monthly Attendance by Dept",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const labels = [
-                            'Sale',
-                            'Finance',
-                            'IT',
-                            'Legal',
-                            'API',
-                          ];
-                          return Text(labels[value.toInt()]);
-                        },
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 260,
+                      child: BarChart(
+                        BarChartData(
+                          maxY: 100,
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 20,
+                                getTitlesWidget: (value, meta) =>
+                                    Text('${value.toInt()}%'),
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final i = value.toInt();
+                                  if (i < 0 || i >= shownDepts.length) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final label = shownDepts[i];
+                                  return Text(
+                                    label.length > 8
+                                        ? '${label.substring(0, 8)}…'
+                                        : label,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          barGroups: groups,
+                        ),
                       ),
                     ),
-                  ),
-
-                  barGroups: [
-                    _bar(0, 40),
-                    _bar(1, 60),
-                    _bar(2, 86, highlight: true),
-                    _bar(3, 60),
-                    _bar(4, 40),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Range: $startKey  →  (before) $endKey",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ),
-          ],
+                );
+              },
+            );
+          },
         ),
       ),
     );

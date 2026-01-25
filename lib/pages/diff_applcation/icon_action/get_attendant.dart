@@ -1,31 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
-  runApp(const GetAttendance());
-}
-
-/* ===================== APP ===================== */
-class GetAttendance extends StatelessWidget {
+class GetAttendance extends StatefulWidget {
   const GetAttendance({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendance',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const AttendancePage(),
-    );
-  }
+  State<GetAttendance> createState() => _GetAttendanceState();
 }
 
-/* ===================== TEXT SCALE ===================== */
 class AppText {
   static double title(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
@@ -33,28 +18,33 @@ class AppText {
   }
 }
 
-/* ===================== ATTENDANCE PAGE ===================== */
-class AttendancePage extends StatefulWidget {
-  const AttendancePage({super.key});
-
-  @override
-  State<AttendancePage> createState() => _AttendancePageState();
-}
-
-class _AttendancePageState extends State<AttendancePage> {
+class _GetAttendanceState extends State<GetAttendance> {
   String statusMessage = "Press the button to check attendance";
   bool isChecking = false;
 
-  bool? isLocationAllowed; // 🔴🟢 show ON / OFF
+  bool? isLocationAllowed;
 
+  // Office config
   final double officeLatitude = 11.5671548;
   final double officeLongitude = 104.8958224;
   final double allowedDistanceInMeters = 50;
+
+  // Firestore
+  final CollectionReference attendanceRef = FirebaseFirestore.instance
+      .collection('attendance');
+
+  // User profile (from Auth + Firestore)
+  bool loadingUser = true;
+  String workerId = "";
+  String workerName = "";
+  String department = "";
+  String phone = "";
 
   @override
   void initState() {
     super.initState();
     loadLocationStatus();
+    _loadUserProfile();
   }
 
   Future<void> loadLocationStatus() async {
@@ -64,7 +54,105 @@ class _AttendancePageState extends State<AttendancePage> {
     });
   }
 
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        setState(() {
+          workerName = "Not logged in";
+          loadingUser = false;
+        });
+        return;
+      }
+
+      workerId = user.uid;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(workerId)
+          .get();
+
+      final data = doc.data() ?? {};
+
+      setState(() {
+        workerName = (data['name'] ?? user.email ?? 'Unknown').toString();
+        department = (data['department'] ?? '').toString();
+        phone = (data['phone'] ?? '').toString();
+        loadingUser = false;
+      });
+    } catch (_) {
+      setState(() {
+        workerName = "Failed to load user";
+        loadingUser = false;
+      });
+    }
+  }
+
+  String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+
+  Future<void> _saveAttendance({required bool isLate}) async {
+    if (workerId.isEmpty) {
+      setState(() => statusMessage = "User not logged in ❌");
+      return;
+    }
+
+    final today = _dateKey(DateTime.now());
+    final docId = "${workerId}_$today";
+    final docRef = attendanceRef.doc(docId);
+
+    final snap = await docRef.get();
+
+    // 1) First time today => check-in
+    if (!snap.exists) {
+      await docRef.set({
+        'workerId': workerId,
+        'name': workerName,
+        'department': department,
+        'phone': phone,
+        'date': today,
+        'status': isLate ? 'LATE' : 'PRESENT',
+        'checkIn': FieldValue.serverTimestamp(),
+        'checkOut': null,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        statusMessage = isLate
+            ? "Checked ✅ You are LATE today (Check-in saved)"
+            : "Checked ✅ You are PRESENT (Check-in saved)";
+      });
+      return;
+    }
+
+    // 2) Second time today => check-out (only if not already checked out)
+    final data = snap.data() as Map<String, dynamic>? ?? {};
+    final alreadyCheckedOut = data['checkOut'] != null;
+
+    if (alreadyCheckedOut) {
+      setState(() => statusMessage = "You already checked-out today ✅");
+      return;
+    }
+
+    await docRef.update({
+      'checkOut': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    setState(() => statusMessage = "Checked ✅ Check-out saved");
+  }
+
   Future<void> checkLocation() async {
+    if (loadingUser) {
+      setState(() => statusMessage = "Loading user... please wait");
+      return;
+    }
+
     setState(() {
       isChecking = true;
       statusMessage = "Checking location...";
@@ -81,7 +169,7 @@ class _AttendancePageState extends State<AttendancePage> {
       return;
     }
 
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() {
         statusMessage = "Location services are disabled ❌";
@@ -90,7 +178,7 @@ class _AttendancePageState extends State<AttendancePage> {
       return;
     }
 
-    LocationPermission permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
@@ -105,11 +193,11 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      double distance = Geolocator.distanceBetween(
+      final distance = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
         officeLatitude,
@@ -119,21 +207,12 @@ class _AttendancePageState extends State<AttendancePage> {
       if (distance <= allowedDistanceInMeters) {
         final now = DateTime.now();
         final isLate = now.hour > 9 || (now.hour == 9 && now.minute > 0);
-
-        setState(() {
-          statusMessage = isLate
-              ? "Checked ✅ You are LATE today"
-              : "Checked ✅ You are PRESENT";
-        });
+        await _saveAttendance(isLate: isLate);
       } else {
-        setState(() {
-          statusMessage = "You are not at the workplace ❌";
-        });
+        setState(() => statusMessage = "You are not at the workplace ❌");
       }
     } catch (_) {
-      setState(() {
-        statusMessage = "Failed to get location ❌";
-      });
+      setState(() => statusMessage = "Failed to get location ❌");
     }
 
     setState(() => isChecking = false);
@@ -155,6 +234,7 @@ class _AttendancePageState extends State<AttendancePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Header
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.all(8),
@@ -173,9 +253,13 @@ class _AttendancePageState extends State<AttendancePage> {
                   const VerticalDivider(thickness: 2),
                   const Icon(Icons.person, size: 50),
                   const SizedBox(width: 8),
-                  const Column(
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [Text('Name'), Text('@name')],
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(loadingUser ? "Loading..." : workerName),
+                      Text(FirebaseAuth.instance.currentUser?.email ?? '-'),
+                    ],
                   ),
                 ],
               ),
@@ -200,10 +284,8 @@ class _AttendancePageState extends State<AttendancePage> {
                         size: 60,
                         color: Colors.blue,
                       ),
-
                       const SizedBox(height: 8),
 
-                      // ✅ ONLY ADDED TEXT
                       Text(
                         isLocationAllowed == null
                             ? "Checking location status..."
@@ -238,93 +320,23 @@ class _AttendancePageState extends State<AttendancePage> {
                         child: ElevatedButton(
                           onPressed: isChecking ? null : checkLocation,
                           child: isChecking
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Text("Check Attendance"),
                         ),
                       ),
-
-                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/* ===================== SECURITY / PRIVACY PAGE ===================== */
-class SecuritySite extends StatefulWidget {
-  const SecuritySite({super.key});
-
-  @override
-  State<SecuritySite> createState() => _SecuritySiteState();
-}
-
-class _SecuritySiteState extends State<SecuritySite> {
-  bool? shareLocation;
-
-  @override
-  void initState() {
-    super.initState();
-    loadSetting();
-  }
-
-  Future<void> loadSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      shareLocation = prefs.getBool('shareLocation') ?? true;
-    });
-  }
-
-  Future<void> saveSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('shareLocation', value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (shareLocation == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Privacy")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                color: shareLocation! ? Colors.green : Colors.red,
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  "Share Location for attendance tracking",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Switch(
-                value: shareLocation!,
-                onChanged: (value) async {
-                  setState(() => shareLocation = value);
-                  await saveSetting(value);
-                },
-              ),
-            ],
-          ),
         ),
       ),
     );

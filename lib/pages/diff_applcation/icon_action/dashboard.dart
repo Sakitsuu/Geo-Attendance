@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   runApp(const DashboardSite());
@@ -46,19 +48,9 @@ class AppText {
 }
 
 class AppIcon {
-  static double large(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    return (w * 0.06).clamp(36.0, 80.0);
-  }
-
   static double medium(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     return (w * 0.045).clamp(28.0, 60.0);
-  }
-
-  static double small(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    return (w * 0.12).clamp(100.0, 180.0);
   }
 
   static double huge(BuildContext context) {
@@ -71,16 +63,30 @@ class _MyHomePageState extends State<MyHomePage> {
   late String today;
   late String currentTime;
 
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
   @override
   void initState() {
     super.initState();
-    DateTime now = DateTime.now();
-    today = "${now.day}-${now.month}-${now.year}";
+    final now = DateTime.now();
+    today = _dateKey(now); // yyyy-MM-dd (same as attendance)
     currentTime = _formatTime(now);
   }
 
   String _formatTime(DateTime now) {
     return "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+  }
+
+  String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+
+  Text _numText(BuildContext context, String value) {
+    return Text(value, style: TextStyle(fontSize: AppText.title(context)));
   }
 
   @override
@@ -90,9 +96,10 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Center(
           child: Column(
             children: <Widget>[
+              // ================= HEADER =================
               Container(
-                padding: EdgeInsets.all(16),
-                margin: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(8),
                 height: 166,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
@@ -104,27 +111,48 @@ class _MyHomePageState extends State<MyHomePage> {
                       'Dashboard',
                       style: TextStyle(fontSize: AppText.title(context)),
                     ),
-                    Spacer(),
-                    VerticalDivider(thickness: 2, color: Colors.grey),
-                    Icon(Icons.person, size: 50),
+                    const Spacer(),
+                    const VerticalDivider(thickness: 2, color: Colors.grey),
+                    const Icon(Icons.person, size: 50),
+                    const SizedBox(width: 10),
                     SizedBox(
                       height: 50,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: <Widget>[Text('Name'), Text('@name')],
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Text('Name'),
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: _db
+                                .collection('users')
+                                .doc(_auth.currentUser?.uid)
+                                .snapshots(),
+                            builder: (context, snap) {
+                              if (!snap.hasData || !snap.data!.exists) {
+                                return const Text('-');
+                              }
+                              final m =
+                                  snap.data!.data() as Map<String, dynamic>;
+                              return Text((m['name'] ?? '-').toString());
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 75),
+
+              const SizedBox(height: 75),
+
+              // ================= MAIN ROW =================
               Row(
                 children: <Widget>[
+                  // ============ LEFT BIG CARD ============
                   Expanded(
                     flex: 2,
                     child: Container(
-                      padding: EdgeInsets.all(16),
-                      margin: EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.all(8),
                       height: 547,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
@@ -133,13 +161,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Column(
                         children: <Widget>[
                           Row(
-                            spacing: 10,
                             children: <Widget>[
                               Icon(
                                 Icons.sunny,
                                 size: AppIcon.huge(context),
                                 color: Colors.grey[500],
                               ),
+                              const SizedBox(width: 10),
                               Flexible(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,18 +191,18 @@ class _MyHomePageState extends State<MyHomePage> {
                               ),
                             ],
                           ),
-                          Flexible(
+                          Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: <Widget>[
                                 Text(
-                                  'Today: ',
+                                  'Today:',
                                   style: TextStyle(
                                     fontSize: AppText.title(context),
                                   ),
                                 ),
                                 Text(
-                                  '$today',
+                                  today,
                                   style: TextStyle(
                                     fontSize: AppText.subtitle(context),
                                   ),
@@ -186,310 +214,183 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                   ),
+
+                  // ============ COLUMN 1 ============
                   Expanded(
                     child: Column(
-                      spacing: 10,
                       children: <Widget>[
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '452',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.person,
-                                        color: Colors.blue,
-                                        size: AppIcon.medium(context),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Total Employees',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+                        // Total Employees
+                        _statCard(
+                          context,
+                          title: "Total Employees",
+                          icon: Icons.person,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db.collection('users').snapshots(),
+                            builder: (context, snap) {
+                              final total = snap.data?.docs.length ?? 0;
+                              return _numText(context, '$total');
+                            },
                           ),
                         ),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '62',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.alarm_off,
-                                        color: Colors.blue,
-                                        size: AppIcon.medium(context),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Late Arrival',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+
+                        // Late Arrival
+                        _statCard(
+                          context,
+                          title: "Late Arrival",
+                          icon: Icons.alarm_off,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db
+                                .collection('attendance')
+                                .where('date', isEqualTo: today)
+                                .where('status', isEqualTo: 'LATE')
+                                .snapshots(),
+                            builder: (context, snap) {
+                              final late = snap.data?.docs.length ?? 0;
+                              return _numText(context, '$late');
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  // ============ COLUMN 2 ============
                   Expanded(
                     child: Column(
-                      spacing: 10,
                       children: <Widget>[
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '360',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.alarm,
-                                        color: Colors.blue,
-                                        size: AppIcon.medium(context),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'On Time',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+                        // On Time
+                        _statCard(
+                          context,
+                          title: "On Time",
+                          icon: Icons.alarm,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db
+                                .collection('attendance')
+                                .where('date', isEqualTo: today)
+                                .where('status', isEqualTo: 'PRESENT')
+                                .snapshots(),
+                            builder: (context, snap) {
+                              final present = snap.data?.docs.length ?? 0;
+                              return _numText(context, '$present');
+                            },
                           ),
                         ),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '62',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.outbond_outlined,
-                                        color: Colors.blue,
-                                        size: AppIcon.medium(context),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Early Depatures',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+
+                        // Early Departures (placeholder = 0)
+                        _statCard(
+                          context,
+                          title: "Early Departures",
+                          icon: Icons.outbond_outlined,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db
+                                .collection('attendance')
+                                .where('date', isEqualTo: today)
+                                .snapshots(),
+                            builder: (context, snap) {
+                              if (!snap.hasData) return _numText(context, '0');
+
+                              int early = 0;
+                              for (final doc in snap.data!.docs) {
+                                final m = doc.data() as Map<String, dynamic>;
+                                final checkOut = m['checkOut'];
+                                if (checkOut is! Timestamp) continue;
+
+                                final dt = checkOut.toDate();
+                                final isEarly = dt.hour < 17; // before 17:00
+                                if (isEarly) early++;
+                              }
+
+                              return _numText(context, '$early');
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  // ============ COLUMN 3 ============
                   Expanded(
                     child: Column(
-                      spacing: 10,
                       children: <Widget>[
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '30',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.person_off,
-                                        color: Colors.blue,
-                                        size: AppIcon.medium(context),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Absent',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+                        // Absent = totalUsers - checkedInToday
+                        _statCard(
+                          context,
+                          title: "Absent",
+                          icon: Icons.person_off,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db.collection('users').snapshots(),
+                            builder: (context, userSnap) {
+                              final totalUsers =
+                                  userSnap.data?.docs.length ?? 0;
+
+                              return StreamBuilder<QuerySnapshot>(
+                                stream: _db
+                                    .collection('attendance')
+                                    .where('date', isEqualTo: today)
+                                    .snapshots(),
+                                builder: (context, attSnap) {
+                                  final checkedInToday =
+                                      attSnap.data?.docs.length ?? 0;
+                                  final absent =
+                                      (totalUsers - checkedInToday) < 0
+                                      ? 0
+                                      : (totalUsers - checkedInToday);
+                                  return _numText(context, '$absent');
+                                },
+                              );
+                            },
                           ),
                         ),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          margin: EdgeInsets.all(8),
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      '42',
-                                      style: TextStyle(
-                                        fontSize: AppText.title(context),
-                                      ),
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      margin: EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[100],
-                                      ),
-                                      child: Icon(
-                                        Icons.date_range,
-                                        size: AppIcon.medium(context),
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Time Off',
-                                style: TextStyle(
-                                  fontSize: AppText.body(context),
-                                ),
-                              ),
-                            ],
+
+                        // Time Off (placeholder = 0)
+                        _statCard(
+                          context,
+                          title: "Time Off",
+                          icon: Icons.date_range,
+                          value: StreamBuilder<QuerySnapshot>(
+                            stream: _db
+                                .collection('requests')
+                                .where('status', isEqualTo: 'accepted')
+                                .snapshots(),
+                            builder: (context, snap) {
+                              if (!snap.hasData) return _numText(context, '0');
+
+                              int count = 0;
+                              for (final doc in snap.data!.docs) {
+                                final m = doc.data() as Map<String, dynamic>;
+
+                                final from = m['fromDate'];
+                                final to = m['toDate'];
+
+                                if (from is! Timestamp || to is! Timestamp)
+                                  continue;
+
+                                final fromDate = DateTime(
+                                  from.toDate().year,
+                                  from.toDate().month,
+                                  from.toDate().day,
+                                );
+                                final toDate = DateTime(
+                                  to.toDate().year,
+                                  to.toDate().month,
+                                  to.toDate().day,
+                                );
+
+                                final todayDate = DateTime.now();
+                                final t = DateTime(
+                                  todayDate.year,
+                                  todayDate.month,
+                                  todayDate.day,
+                                );
+
+                                if (!t.isBefore(fromDate) &&
+                                    !t.isAfter(toDate)) {
+                                  count++;
+                                }
+                              }
+
+                              return _numText(context, '$count');
+                            },
                           ),
                         ),
                       ],
@@ -500,6 +401,51 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ===================== STAT CARD WIDGET =====================
+  Widget _statCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Widget value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(8),
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.grey[300],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(child: value),
+              const Spacer(),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey[100],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.blue,
+                    size: AppIcon.medium(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(title, style: TextStyle(fontSize: AppText.body(context))),
+        ],
       ),
     );
   }

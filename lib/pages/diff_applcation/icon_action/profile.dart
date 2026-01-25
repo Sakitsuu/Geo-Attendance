@@ -24,6 +24,26 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String get uid => _auth.currentUser!.uid;
 
+  String _dateKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+
+  String _monthStartKey(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    return "$y-$m-01";
+  }
+
+  String _nextMonthKey(DateTime d) {
+    final next = DateTime(d.year, d.month + 1, 1);
+    final y = next.year.toString().padLeft(4, '0');
+    final m = next.month.toString().padLeft(2, '0');
+    return "$y-$m-01";
+  }
+
   Future<Map<String, dynamic>?> _loadProfile() async {
     final doc = await _db.collection('users').doc(uid).get();
     return doc.data();
@@ -207,6 +227,185 @@ class _ProfilePageState extends State<ProfilePage> {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  Widget _monthlyRateWidget() {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 1);
+
+    // Your attendance "date" is String yyyy-MM-dd
+    final startKey = _monthStartKey(now);
+    final endKey = _nextMonthKey(now);
+
+    return StreamBuilder<QuerySnapshot>(
+      // attendance for this worker for current month
+      stream: _db
+          .collection('attendance')
+          .where('workerId', isEqualTo: uid)
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .where('date', isLessThan: endKey)
+          .snapshots(),
+      builder: (context, attSnap) {
+        if (attSnap.hasError) {
+          return Text(
+            'Err',
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+        if (attSnap.connectionState == ConnectionState.waiting) {
+          return const Text(
+            '…',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+        if (!attSnap.hasData) {
+          return const Text(
+            '—',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+
+        // Build a map: dateKey -> status
+        // If there are multiple docs for same day, keep the "worst" status
+        // worst order: ABSENT (no doc) > LATE > PRESENT
+        final Map<String, String> statusByDate = {};
+
+        for (final doc in attSnap.data!.docs) {
+          final m = doc.data() as Map<String, dynamic>;
+          final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
+          final status = (m['status'] ?? '').toString(); // PRESENT / LATE
+          if (date.isEmpty) continue;
+
+          final existing = statusByDate[date];
+          if (existing == null) {
+            statusByDate[date] = status;
+          } else {
+            // If any is LATE, keep LATE
+            if (existing != 'LATE' && status == 'LATE') {
+              statusByDate[date] = 'LATE';
+            }
+          }
+        }
+
+        // Now also load accepted requests for this user
+        return StreamBuilder<QuerySnapshot>(
+          stream: _db
+              .collection('requests')
+              .where('uid', isEqualTo: uid)
+              .where('status', isEqualTo: 'accepted')
+              .snapshots(),
+          builder: (context, reqSnap) {
+            if (reqSnap.hasError) {
+              return const Text(
+                'Err',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              );
+            }
+            if (reqSnap.connectionState == ConnectionState.waiting) {
+              return const Text(
+                '…',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              );
+            }
+            if (!reqSnap.hasData) {
+              return const Text(
+                '—',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              );
+            }
+
+            // Build set of dates covered by accepted leave/time_off in this month
+            final Set<String> offDays = {};
+
+            for (final doc in reqSnap.data!.docs) {
+              final m = doc.data() as Map<String, dynamic>;
+              final fromTs = m['fromDate'];
+              final toTs = m['toDate'];
+              if (fromTs is! Timestamp || toTs is! Timestamp) continue;
+
+              DateTime from = fromTs.toDate();
+              DateTime to = toTs.toDate();
+
+              // normalize to date-only
+              from = DateTime(from.year, from.month, from.day);
+              to = DateTime(to.year, to.month, to.day);
+
+              // clamp to this month
+              if (to.isBefore(monthStart) || from.isAfter(monthEnd)) continue;
+
+              DateTime start = from.isBefore(monthStart) ? monthStart : from;
+              DateTime end = to.isAfter(monthEnd)
+                  ? monthEnd.subtract(const Duration(days: 1))
+                  : to;
+
+              for (
+                DateTime d = start;
+                !d.isAfter(end);
+                d = d.add(const Duration(days: 1))
+              ) {
+                offDays.add(_dateKey(d));
+              }
+            }
+
+            // Score calculation
+            int score = 100;
+
+            int lateDays = 0;
+            int absentDays = 0;
+            int offCount = 0;
+
+            final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
+            for (int day = 1; day <= daysInMonth; day++) {
+              final d = DateTime(now.year, now.month, day);
+              final key = _dateKey(d);
+
+              final st = statusByDate[key]; // PRESENT / LATE / null
+              final isOff = offDays.contains(key);
+
+              if (st == 'LATE') {
+                lateDays++;
+                score -= 2;
+              }
+
+              if (isOff) {
+                offCount++;
+                score -= 1; // time off reduces score a little
+              }
+
+              // Absent only if no attendance and not off
+              if (st == null && !isOff) {
+                absentDays++;
+                score -= 5;
+              }
+            }
+
+            // clamp
+            if (score < 0) score = 0;
+            if (score > 100) score = 100;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$score%',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Late: $lateDays • Absent: $absentDays • Off: $offCount',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,14 +474,62 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   children: [
                     _statCard(
-                      title: 'Attendance Rate',
+                      title: 'Monthly Rate',
                       icon: Icons.alarm,
-                      value: '—', // later connect to attendance collection
+                      value: _monthlyRateWidget(),
                     ),
+
                     _statCard(
                       title: 'Engagement Rate',
                       icon: Icons.arrow_outward,
-                      value: '—', // later connect to request/activity count
+                      value: StreamBuilder<QuerySnapshot>(
+                        stream: _db
+                            .collection('requests')
+                            .where('uid', isEqualTo: uid)
+                            .where(
+                              'createdAt',
+                              isGreaterThanOrEqualTo: Timestamp.fromDate(
+                                DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  1,
+                                ),
+                              ),
+                            )
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (!snap.hasData) {
+                            return const Text(
+                              '—',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          }
+
+                          final requestCount = snap.data!.docs.length;
+
+                          final now = DateTime.now();
+                          final daysInMonth = DateTime(
+                            now.year,
+                            now.month + 1,
+                            0,
+                          ).day;
+
+                          final rate = daysInMonth == 0
+                              ? 0
+                              : ((requestCount / daysInMonth) * 100).round();
+
+                          return Text(
+                            '$rate%',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -394,7 +641,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _statCard({
     required String title,
     required IconData icon,
-    required String value,
+    required Widget value,
   }) {
     return Expanded(
       child: Container(
@@ -416,10 +663,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             const Spacer(),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
+            value,
           ],
         ),
       ),
