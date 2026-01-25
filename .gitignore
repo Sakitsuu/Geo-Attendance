@@ -47,3 +47,7 @@ build/
 .dart_tool/
 .idea/
 .vscode/
+build/
+.dart_tool/
+.idea/
+.vscode/

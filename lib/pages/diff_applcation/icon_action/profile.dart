@@ -19,16 +19,17 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String get uid => _auth.currentUser!.uid;
 
+  // ---------- helpers ----------
   String _dateKey(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
     final day = d.day.toString().padLeft(2, '0');
-    return "$y-$m-$day";
+    return "$y-$m-$day"; // yyyy-MM-dd
   }
 
   String _monthStartKey(DateTime d) {
@@ -49,7 +50,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return doc.data();
   }
 
-  // ✅ pending requests stream (live)
   Stream<QuerySnapshot> _pendingRequestsStream() {
     return _db
         .collection('requests')
@@ -60,7 +60,17 @@ class _ProfilePageState extends State<ProfilePage> {
         .snapshots();
   }
 
-  // ✅ Request dialog (Time-off / Leave) + dates + reason
+  String _typeLabel(String type) {
+    if (type == 'leave') return 'Leave';
+    return 'Time-off';
+  }
+
+  String _fmtDate(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  // ---------- request dialog ----------
   Future<void> _openRequestDialog(String type) async {
     DateTime? fromDate;
     DateTime? toDate;
@@ -217,27 +227,20 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _typeLabel(String type) {
-    if (type == 'leave') return 'Leave';
-    return 'Time-off';
-  }
-
-  String _fmtDate(DateTime? d) {
-    if (d == null) return '-';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
+  // ---------- Monthly Rate (starts 100%, drops by rules) ----------
+  // Rules (edit if you want):
+  // - LATE: -2
+  // - ACCEPTED time_off/leave day: -1
+  // - ABSENT day (no attendance AND not off): -5
   Widget _monthlyRateWidget() {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 1);
+    final monthNext = DateTime(now.year, now.month + 1, 1);
 
-    // Your attendance "date" is String yyyy-MM-dd
     final startKey = _monthStartKey(now);
     final endKey = _nextMonthKey(now);
 
     return StreamBuilder<QuerySnapshot>(
-      // attendance for this worker for current month
       stream: _db
           .collection('attendance')
           .where('workerId', isEqualTo: uid)
@@ -246,9 +249,9 @@ class _ProfilePageState extends State<ProfilePage> {
           .snapshots(),
       builder: (context, attSnap) {
         if (attSnap.hasError) {
-          return Text(
+          return const Text(
             'Err',
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           );
         }
         if (attSnap.connectionState == ConnectionState.waiting) {
@@ -257,36 +260,25 @@ class _ProfilePageState extends State<ProfilePage> {
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           );
         }
-        if (!attSnap.hasData) {
-          return const Text(
-            '—',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          );
-        }
 
-        // Build a map: dateKey -> status
-        // If there are multiple docs for same day, keep the "worst" status
-        // worst order: ABSENT (no doc) > LATE > PRESENT
         final Map<String, String> statusByDate = {};
-
-        for (final doc in attSnap.data!.docs) {
+        for (final doc in attSnap.data?.docs ?? []) {
           final m = doc.data() as Map<String, dynamic>;
           final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
           final status = (m['status'] ?? '').toString(); // PRESENT / LATE
           if (date.isEmpty) continue;
 
+          // keep worst (LATE worse than PRESENT)
           final existing = statusByDate[date];
           if (existing == null) {
             statusByDate[date] = status;
           } else {
-            // If any is LATE, keep LATE
             if (existing != 'LATE' && status == 'LATE') {
               statusByDate[date] = 'LATE';
             }
           }
         }
 
-        // Now also load accepted requests for this user
         return StreamBuilder<QuerySnapshot>(
           stream: _db
               .collection('requests')
@@ -306,17 +298,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               );
             }
-            if (!reqSnap.hasData) {
-              return const Text(
-                '—',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-              );
-            }
 
-            // Build set of dates covered by accepted leave/time_off in this month
             final Set<String> offDays = {};
 
-            for (final doc in reqSnap.data!.docs) {
+            for (final doc in reqSnap.data?.docs ?? []) {
               final m = doc.data() as Map<String, dynamic>;
               final fromTs = m['fromDate'];
               final toTs = m['toDate'];
@@ -324,17 +309,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
               DateTime from = fromTs.toDate();
               DateTime to = toTs.toDate();
-
-              // normalize to date-only
               from = DateTime(from.year, from.month, from.day);
               to = DateTime(to.year, to.month, to.day);
 
               // clamp to this month
-              if (to.isBefore(monthStart) || from.isAfter(monthEnd)) continue;
+              if (to.isBefore(monthStart) || from.isAfter(monthNext)) continue;
 
-              DateTime start = from.isBefore(monthStart) ? monthStart : from;
-              DateTime end = to.isAfter(monthEnd)
-                  ? monthEnd.subtract(const Duration(days: 1))
+              final start = from.isBefore(monthStart) ? monthStart : from;
+              final end = to.isAfter(monthNext)
+                  ? monthNext.subtract(const Duration(days: 1))
                   : to;
 
               for (
@@ -346,9 +329,7 @@ class _ProfilePageState extends State<ProfilePage> {
               }
             }
 
-            // Score calculation
             int score = 100;
-
             int lateDays = 0;
             int absentDays = 0;
             int offCount = 0;
@@ -369,17 +350,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
               if (isOff) {
                 offCount++;
-                score -= 1; // time off reduces score a little
+                score -= 1;
               }
 
-              // Absent only if no attendance and not off
+              // absent: no attendance doc and not off
               if (st == null && !isOff) {
                 absentDays++;
                 score -= 5;
               }
             }
 
-            // clamp
             if (score < 0) score = 0;
             if (score > 100) score = 100;
 
@@ -406,9 +386,68 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // ---------- Engagement Rate (example rule) ----------
+  // Here: start 100%, each request in this month reduces -5
+  // (change rule if you want)
+  Widget _engagementRateWidget() {
+    final now = DateTime.now();
+    final monthStart = Timestamp.fromDate(DateTime(now.year, now.month, 1));
+    final monthNext = Timestamp.fromDate(DateTime(now.year, now.month + 1, 1));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('requests')
+          .where('uid', isEqualTo: uid)
+          .where('createdAt', isGreaterThanOrEqualTo: monthStart)
+          .where('createdAt', isLessThan: monthNext)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return const Text(
+            'Err',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Text(
+            '…',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          );
+        }
+
+        final count = snap.data?.docs.length ?? 0;
+
+        int score = 100 - (count * 5);
+        if (score < 0) score = 0;
+        if (score > 100) score = 100;
+
+        return Text(
+          '$score%',
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        );
+      },
+    );
+  }
+
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    // IMPORTANT: avoid crash if user is not logged in
+    if (_auth.currentUser == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'You must be logged in.',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: cs.surface,
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _loadProfile(),
         builder: (context, snapshot) {
@@ -417,7 +456,12 @@ class _ProfilePageState extends State<ProfilePage> {
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('Profile not found'));
+            return Center(
+              child: Text(
+                'Profile not found',
+                style: TextStyle(color: cs.onSurface),
+              ),
+            );
           }
 
           final data = snapshot.data!;
@@ -436,130 +480,86 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 166,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
+                    color: cs.surfaceContainerHighest,
                   ),
                   child: Row(
                     children: [
-                      const Text('Profile', style: TextStyle(fontSize: 28)),
-                      const VerticalDivider(thickness: 2),
+                      Text(
+                        'Profile',
+                        style: TextStyle(fontSize: 28, color: cs.onSurface),
+                      ),
+                      VerticalDivider(thickness: 2, color: cs.outline),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             'Good morning, $name!',
-                            style: const TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 20, color: cs.onSurface),
                           ),
                           Text(
                             'ID: $id',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           Text(
                             'Department: $department',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           Text(
                             'Role: $role',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
                       const Spacer(),
-                      const Icon(Icons.person, size: 48),
+                      Icon(Icons.person, size: 48, color: cs.onSurface),
                     ],
                   ),
                 ),
 
-                // STATS (still dummy for now)
+                // STATS
                 Row(
                   children: [
                     _statCard(
+                      cs: cs,
                       title: 'Monthly Rate',
                       icon: Icons.alarm,
                       value: _monthlyRateWidget(),
                     ),
-
                     _statCard(
+                      cs: cs,
                       title: 'Engagement Rate',
                       icon: Icons.arrow_outward,
-                      value: StreamBuilder<QuerySnapshot>(
-                        stream: _db
-                            .collection('requests')
-                            .where('uid', isEqualTo: uid)
-                            .where(
-                              'createdAt',
-                              isGreaterThanOrEqualTo: Timestamp.fromDate(
-                                DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  1,
-                                ),
-                              ),
-                            )
-                            .snapshots(),
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const Text(
-                              '—',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          }
-
-                          final requestCount = snap.data!.docs.length;
-
-                          final now = DateTime.now();
-                          final daysInMonth = DateTime(
-                            now.year,
-                            now.month + 1,
-                            0,
-                          ).day;
-
-                          final rate = daysInMonth == 0
-                              ? 0
-                              : ((requestCount / daysInMonth) * 100).round();
-
-                          return Text(
-                            '$rate%',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        },
-                      ),
+                      value: _engagementRateWidget(),
                     ),
                   ],
                 ),
 
-                // REQUESTS (REAL)
+                // REQUESTS
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
+                    color: cs.surfaceContainerHighest,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.error_outline),
+                          Icon(Icons.error_outline, color: cs.onSurface),
                           const SizedBox(width: 10),
-                          const Text(
+                          Text(
                             'Pending Approvals',
-                            style: TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 20, color: cs.onSurface),
                           ),
                           const Spacer(),
-
-                          // ✅ two buttons like your old UI
                           ElevatedButton(
                             onPressed: () => _openRequestDialog('time_off'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
                             ),
                             child: const Text('Time-off'),
                           ),
@@ -567,7 +567,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ElevatedButton(
                             onPressed: () => _openRequestDialog('leave'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
                             ),
                             child: const Text('Leave'),
                           ),
@@ -575,24 +576,29 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // ✅ real pending list from Firestore
                       StreamBuilder<QuerySnapshot>(
                         stream: _pendingRequestsStream(),
                         builder: (context, snap) {
                           if (snap.hasError) {
-                            return Text('Error: ${snap.error}');
+                            return Text(
+                              'Error: ${snap.error}',
+                              style: TextStyle(color: cs.onSurface),
+                            );
                           }
-                          if (!snap.hasData) {
+                          if (snap.connectionState == ConnectionState.waiting) {
                             return const Center(
                               child: CircularProgressIndicator(),
                             );
                           }
 
-                          final docs = snap.data!.docs;
+                          final docs = snap.data?.docs ?? [];
                           if (docs.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Text('No pending requests.'),
+                            return Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                'No pending requests.',
+                                style: TextStyle(color: cs.onSurfaceVariant),
+                              ),
                             );
                           }
 
@@ -610,13 +616,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 margin: const EdgeInsets.symmetric(vertical: 6),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
-                                  color: Colors.grey[200],
+                                  color: cs.surfaceContainer,
                                 ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: Text(
                                         '${_typeLabel(type)} • ${_fmtDate(from)} → ${_fmtDate(to)}\n$reason',
+                                        style: TextStyle(color: cs.onSurface),
                                       ),
                                     ),
                                     const Chip(label: Text('pending')),
@@ -639,6 +646,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _statCard({
+    required ColorScheme cs,
     required String title,
     required IconData icon,
     required Widget value,
@@ -650,16 +658,19 @@ class _ProfilePageState extends State<ProfilePage> {
         height: 150,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey[300],
+          color: cs.surfaceContainerHighest,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(title, style: const TextStyle(fontSize: 18)),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 18, color: cs.onSurface),
+                ),
                 const Spacer(),
-                Icon(icon),
+                Icon(icon, color: cs.onSurface),
               ],
             ),
             const Spacer(),

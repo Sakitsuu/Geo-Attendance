@@ -4,6 +4,7 @@ import 'package:geo_attendance_new_ui/pages/login_page.dart';
 import 'package:geo_attendance_new_ui/pages/register_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:geo_attendance_new_ui/pages/theme_controller.dart';
 
 void main() async {
   await Firebase.initializeApp(
@@ -16,16 +17,34 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const MyHomePage(title: 'Geo Attendant'),
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Geo Attendant',
+
+          theme: ThemeData(
+            brightness: Brightness.light,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            fontFamily: 'MomoTrustDisplay',
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue,
+              brightness: Brightness.dark,
+            ),
+            fontFamily: 'MomoTrustDisplay',
+          ),
+
+          themeMode: themeController.mode,
+          home: const MyHomePage(title: 'Geo Attendant'),
+        );
+      },
     );
   }
 }

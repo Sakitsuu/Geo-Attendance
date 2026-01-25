@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geo_attendance_new_ui/main.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/dashboard.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/department.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/graphic.dart';
@@ -12,6 +11,7 @@ import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/security
     as privacy;
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/setting.dart';
 import 'package:geo_attendance_new_ui/pages/login_page.dart';
+import 'package:geo_attendance_new_ui/pages/theme_controller.dart';
 
 void main() {
   runApp(const WorkerPage());
@@ -19,16 +19,36 @@ void main() {
 
 class WorkerPage extends StatelessWidget {
   const WorkerPage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const MyHomePage(title: 'Geo Attendant'),
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Geo Attendant',
+
+          theme: ThemeData(
+            brightness: Brightness.light,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            fontFamily: 'MomoTrustDisplay',
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue,
+              brightness: Brightness.dark,
+            ),
+            fontFamily: 'MomoTrustDisplay',
+          ),
+
+          // ✅ THIS makes switching work
+          themeMode: themeController.mode,
+
+          home: const MyHomePage(title: 'Geo Attendant'),
+        );
+      },
     );
   }
 }
