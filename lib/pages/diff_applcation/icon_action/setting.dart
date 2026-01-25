@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geo_attendance_new_ui/pages/theme_controller.dart';
+import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/edit_profile.dart';
 
 class SettingSite extends StatelessWidget {
   const SettingSite({super.key});
@@ -149,8 +150,16 @@ class _SettingPageState extends State<SettingPage> {
                             'Edit profile',
                             style: TextStyle(color: cs.onSurface),
                           ),
-                          onTap: () {
-                            // TODO: Navigator.push(...EditProfilePage())
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditProfilePage(),
+                              ),
+                            );
+
+                            // ✅ Refresh settings page UI (reload name/email shown here)
+                            setState(() {});
                           },
                         ),
                       ],
