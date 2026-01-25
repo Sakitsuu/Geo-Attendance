@@ -70,6 +70,7 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final query = attendanceRef.where('date', isEqualTo: _dateKey);
 
     return Scaffold(
@@ -82,18 +83,25 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
               height: 166,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[300],
+                color: cs.surfaceContainerHighest,
               ),
               child: Row(
                 children: <Widget>[
                   Text(
                     'Attendance List',
-                    style: TextStyle(fontSize: AppText.title(context)),
+                    style: TextStyle(
+                      fontSize: AppText.title(context),
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     _dateKey,
-                    style: TextStyle(fontSize: AppText.body(context)),
+                    style: TextStyle(
+                      fontSize: AppText.body(context),
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
@@ -102,11 +110,12 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                     label: const Text('Date'),
                   ),
                   const SizedBox(width: 12),
-                  const VerticalDivider(thickness: 2, color: Colors.grey),
+                  VerticalDivider(thickness: 2, color: cs.outlineVariant),
                   Icon(Icons.people, size: AppIcon.large(context)),
                 ],
               ),
             ),
+            // This is ma table Card guys
             const SizedBox(height: 20),
             SizedBox(
               height: 800,
@@ -116,29 +125,40 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                   margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
+                    color: cs.surfaceContainerHighest, // ✅ was grey[300]
                   ),
                   child: Column(
                     children: <Widget>[
-                      Row(
-                        children: const <Widget>[
-                          Expanded(flex: 1, child: Text('No.')),
-                          Expanded(flex: 2, child: Text('Name')),
-                          Expanded(flex: 3, child: Text('Department')),
-                          Expanded(flex: 3, child: Text('Phone number')),
-                          Expanded(flex: 2, child: Text('Check-in')),
-                          Expanded(flex: 2, child: Text('Check-out')),
-                          Expanded(flex: 2, child: Text('Date')),
-                        ],
+                      DefaultTextStyle(
+                        style: TextStyle(
+                          color: cs.onSurface, // ✅ make headers readable
+                          fontWeight: FontWeight.w700,
+                        ),
+                        child: const Row(
+                          children: <Widget>[
+                            Expanded(flex: 1, child: Text('No.')),
+                            Expanded(flex: 2, child: Text('Name')),
+                            Expanded(flex: 3, child: Text('Department')),
+                            Expanded(flex: 3, child: Text('Phone number')),
+                            Expanded(flex: 2, child: Text('Check-in')),
+                            Expanded(flex: 2, child: Text('Check-out')),
+                            Expanded(flex: 2, child: Text('Date')),
+                          ],
+                        ),
                       ),
-                      const Divider(thickness: 2, color: Colors.grey),
+
+                      Divider(thickness: 2, color: cs.outlineVariant), // ✅
+
                       Expanded(
                         child: StreamBuilder<QuerySnapshot>(
                           stream: query.snapshots(),
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
-                              return const Center(
-                                child: Text('Error loading attendance'),
+                              return Center(
+                                child: Text(
+                                  'Error loading attendance',
+                                  style: TextStyle(color: cs.onSurface),
+                                ),
                               );
                             }
                             if (snapshot.connectionState ==
@@ -152,7 +172,10 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
 
                             if (docs.isEmpty) {
                               return Center(
-                                child: Text('No attendance on $_dateKey'),
+                                child: Text(
+                                  'No attendance on $_dateKey',
+                                  style: TextStyle(color: cs.onSurface),
+                                ),
                               );
                             }
 
@@ -160,8 +183,8 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
                                 final m =
-                                    docs[index].data()
-                                        as Map<String, dynamic>? ??
+                                    (docs[index].data()
+                                        as Map<String, dynamic>?) ??
                                     {};
 
                                 return Container(
@@ -169,37 +192,55 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                                     vertical: 12,
                                     horizontal: 8,
                                   ),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        flex: 1,
-                                        child: Text('${index + 1}'),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: cs.outlineVariant.withOpacity(
+                                          0.5,
+                                        ),
                                       ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(_text(m['name'])),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: Text(_text(m['department'])),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: Text(_text(m['phone'])),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(_formatTime(m['checkIn'])),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(_formatTime(m['checkOut'])),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(_text(m['date'])),
-                                      ),
-                                    ],
+                                    ),
+                                  ),
+                                  child: DefaultTextStyle(
+                                    style: TextStyle(
+                                      color: cs.onSurface,
+                                    ), // ✅ row text
+                                    child: Row(
+                                      children: <Widget>[
+                                        Expanded(
+                                          flex: 1,
+                                          child: Text('${index + 1}'),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(_text(m['name'])),
+                                        ),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(_text(m['department'])),
+                                        ),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(_text(m['phone'])),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            _formatTime(m['checkIn']),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            _formatTime(m['checkOut']),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(_text(m['date'])),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               },

@@ -29,6 +29,9 @@ class _GetAttendanceState extends State<GetAttendance> {
   final double officeLongitude = 104.8958224;
   final double allowedDistanceInMeters = 50;
 
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
   // Firestore
   final CollectionReference attendanceRef = FirebaseFirestore.instance
       .collection('attendance');
@@ -218,19 +221,21 @@ class _GetAttendanceState extends State<GetAttendance> {
     setState(() => isChecking = false);
   }
 
-  Color getStatusColor() {
+  Color getStatusColor(ColorScheme cs) {
     if (statusMessage.contains("PRESENT")) return Colors.green;
     if (statusMessage.contains("LATE")) return Colors.orange;
     if (statusMessage.contains("❌")) return Colors.red;
-    return Colors.black;
+    return cs.onSurface; // ✅ was Colors.black
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 600;
 
     return Scaffold(
+      backgroundColor: cs.surface,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -241,25 +246,49 @@ class _GetAttendanceState extends State<GetAttendance> {
               height: 166,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[300],
+                color: cs.surfaceContainerHighest,
               ),
               child: Row(
                 children: [
                   Text(
                     'Get your attendance',
-                    style: TextStyle(fontSize: AppText.title(context)),
+                    style: TextStyle(
+                      fontSize: AppText.title(context),
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
-                  const VerticalDivider(thickness: 2),
+                  VerticalDivider(
+                    thickness: 2,
+                    width: 40, // ✅ same as Graphic
+                    color: cs.outlineVariant,
+                  ),
+
+                  // Name block EXACT same structure as Graphic
                   const Icon(Icons.person, size: 50),
-                  const SizedBox(width: 8),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loadingUser ? "Loading..." : workerName),
-                      Text(FirebaseAuth.instance.currentUser?.email ?? '-'),
-                    ],
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    height: 50,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text('Name'),
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: _db
+                              .collection('users')
+                              .doc(_auth.currentUser?.uid)
+                              .snapshots(),
+                          builder: (context, snap) {
+                            if (!snap.hasData || !snap.data!.exists) {
+                              return const Text('-');
+                            }
+                            final m = snap.data!.data() as Map<String, dynamic>;
+                            return Text((m['name'] ?? '-').toString());
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -270,20 +299,17 @@ class _GetAttendanceState extends State<GetAttendance> {
             Padding(
               padding: EdgeInsets.all(isMobile ? 16 : 40),
               child: Card(
-                color: Colors.grey[300],
-                elevation: 6,
+                color: cs.surfaceContainerHighest,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: cs.outlineVariant),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 60,
-                        color: Colors.blue,
-                      ),
+                      Icon(Icons.location_on, size: 60, color: cs.primary),
                       const SizedBox(height: 8),
 
                       Text(
@@ -309,7 +335,7 @@ class _GetAttendanceState extends State<GetAttendance> {
                         style: TextStyle(
                           fontSize: isMobile ? 18 : 20,
                           fontWeight: FontWeight.bold,
-                          color: getStatusColor(),
+                          color: getStatusColor(cs),
                         ),
                       ),
 
@@ -317,8 +343,15 @@ class _GetAttendanceState extends State<GetAttendance> {
 
                       SizedBox(
                         width: double.infinity,
+                        height: 48,
                         child: ElevatedButton(
                           onPressed: isChecking ? null : checkLocation,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
+                            disabledBackgroundColor: cs.surfaceContainerHighest,
+                            disabledForegroundColor: cs.onSurfaceVariant,
+                          ),
                           child: isChecking
                               ? const SizedBox(
                                   height: 22,

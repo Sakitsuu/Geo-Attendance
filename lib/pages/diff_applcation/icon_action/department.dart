@@ -2,24 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const DepartmentSite());
-}
-
 class DepartmentSite extends StatelessWidget {
   const DepartmentSite({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const DepartmentPage(),
-    );
+    // ✅ IMPORTANT: no MaterialApp here (use global theme from main.dart)
+    return const DepartmentPage();
   }
 }
 
@@ -53,13 +42,13 @@ class AppIcon {
   }
 }
 
-// ------------------ Department Model (local) ------------------
+// ------------------ Department Model ------------------
 class DepartmentItem {
-  final String id; // docId in departments collection
+  final String id; // docId in departments
   final String name; // departments.name
   final int totalEmployees; // computed from users.department
-  final String leaderName; // from departments.leaderName
-  final String icon; // from departments.icon
+  final String leaderName; // departments.leaderName
+  final String icon; // departments.icon
 
   const DepartmentItem({
     required this.id,
@@ -70,7 +59,6 @@ class DepartmentItem {
   });
 }
 
-// ------------------ Main Page ------------------
 class DepartmentPage extends StatefulWidget {
   const DepartmentPage({super.key});
 
@@ -84,7 +72,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
   String get uid => _auth.currentUser?.uid ?? '';
 
-  // roles: "manager", "staff", etc.
   Stream<String> _roleStream() {
     if (uid.isEmpty) return Stream.value('guest');
     return _db.collection('users').doc(uid).snapshots().map((doc) {
@@ -112,16 +99,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
     }
   }
 
-  // Convert name -> stable docId (IT -> it, Human Resource -> human_resource)
-  String _toDocId(String name) {
-    return name
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s+'), '_')
-        .replaceAll(RegExp(r'[^a-z0-9_]+'), '');
-  }
-
-  // ------------------ CRUD for departments (manager) ------------------
+  // ------------------ CRUD (manager only UI) ------------------
   Future<void> _openDeptDialog({
     String? docId,
     Map<String, dynamic>? existing,
@@ -132,8 +110,8 @@ class _DepartmentPageState extends State<DepartmentPage> {
     final leaderCtrl = TextEditingController(
       text: (existing?['leaderName'] ?? '').toString(),
     );
-
     String selectedIcon = (existing?['icon'] ?? 'group').toString();
+
     bool saving = false;
 
     await showDialog(
@@ -164,20 +142,16 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
               try {
                 if (docId == null) {
-                  // ✅ create with stable ID based on name (no random auto ID)
-                  final newId = _toDocId(name);
                   payload['createdAt'] = FieldValue.serverTimestamp();
                   await _db
                       .collection('departments')
-                      .doc(newId)
-                      .set(payload, SetOptions(merge: true));
+                      .add(payload); // auto id OK
                 } else {
                   await _db
                       .collection('departments')
                       .doc(docId)
                       .update(payload);
                 }
-
                 if (mounted) Navigator.pop(ctx);
               } catch (e) {
                 setLocal(() => saving = false);
@@ -233,14 +207,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
                           setLocal(() => selectedIcon = v ?? 'group'),
                       decoration: const InputDecoration(labelText: 'Icon'),
                     ),
-                    if (docId == null)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 10),
-                        child: Text(
-                          'Note: Department ID will be auto-made from name (e.g. IT -> it).',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -276,9 +242,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Delete department?'),
-            content: Text(
-              'Delete "$name"? Users will still keep department = "$name".',
-            ),
+            content: Text('Delete "$name"? Users still keep users.department.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -332,7 +296,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
                     _header(context, role),
                     const SizedBox(height: 16),
 
-                    // departments + users to compute totals per dept name
                     StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                       stream: _db
                           .collection('departments')
@@ -374,19 +337,15 @@ class _DepartmentPageState extends State<DepartmentPage> {
                               );
                             }
 
-                            // ✅ COUNT USERS BY "department" (NOT departmentId)
-                            final Map<String, int> countsByDeptName = {};
+                            // ✅ COUNT USERS BY users.department (case-insensitive)
+                            final Map<String, int> countsByDept = {};
                             for (final u in userDocs) {
-                              final data = u.data();
-                              final depName = (data['department'] ?? '')
+                              final dep = (u.data()['department'] ?? '')
                                   .toString()
                                   .trim()
                                   .toLowerCase();
-                              if (depName.isEmpty) continue;
-
-                              // includes team leader too
-                              countsByDeptName[depName] =
-                                  (countsByDeptName[depName] ?? 0) + 1;
+                              if (dep.isEmpty) continue;
+                              countsByDept[dep] = (countsByDept[dep] ?? 0) + 1;
                             }
 
                             final items = deptDocs.map((d) {
@@ -399,7 +358,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
                               return DepartmentItem(
                                 id: depId,
                                 name: depName,
-                                totalEmployees: countsByDeptName[key] ?? 0,
+                                totalEmployees: countsByDept[key] ?? 0,
                                 leaderName: (data['leaderName'] ?? '-')
                                     .toString(),
                                 icon: (data['icon'] ?? 'group').toString(),
@@ -533,10 +492,8 @@ class _DepartmentPageState extends State<DepartmentPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DepartmentMembersPage(
-              departmentName: d.name, // ✅ filter by department NAME
-              icon: icon,
-            ),
+            builder: (_) =>
+                DepartmentMembersPage(departmentName: d.name, icon: icon),
           ),
         );
       },
@@ -691,7 +648,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
 }
 
 // ------------------ Members Page ------------------
-// ✅ Shows users where users.department == departmentName
 class DepartmentMembersPage extends StatelessWidget {
   final String departmentName;
   final IconData icon;
@@ -706,6 +662,8 @@ class DepartmentMembersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
 
+    // ✅ case-insensitive match by adding "departmentLower" is best
+    // But for now, we match exact departmentName.
     return Scaffold(
       appBar: AppBar(title: Text('Members: $departmentName')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -719,12 +677,12 @@ class DepartmentMembersPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
 
           final users = snap.data!.docs;
-
           if (users.isEmpty) {
             return Center(
               child: Text(
                 'No users in $departmentName yet.\n'
-                'Set users.department = "$departmentName"',
+                'Make sure users.department == "$departmentName"',
+                textAlign: TextAlign.center,
               ),
             );
           }

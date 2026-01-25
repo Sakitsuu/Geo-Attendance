@@ -2,23 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
-  runApp(const DashboardSite());
-}
+// ❌ Remove this main() when dashboard is inside your app.
+// void main() => runApp(const DashboardSite());
 
 class DashboardSite extends StatelessWidget {
   const DashboardSite({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const MyHomePage(title: 'Geo Attendant'),
-    );
+    // ✅ IMPORTANT: No MaterialApp here (use the app's global MaterialApp)
+    return const MyHomePage(title: 'Geo Attendant');
   }
 }
 
@@ -70,7 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    today = _dateKey(now); // yyyy-MM-dd (same as attendance)
+    today = _dateKey(now);
     currentTime = _formatTime(now);
   }
 
@@ -85,13 +78,19 @@ class _MyHomePageState extends State<MyHomePage> {
     return "$y-$m-$day";
   }
 
-  Text _numText(BuildContext context, String value) {
-    return Text(value, style: TextStyle(fontSize: AppText.title(context)));
+  Text _numText(BuildContext context, String value, ColorScheme cs) {
+    return Text(
+      value,
+      style: TextStyle(fontSize: AppText.title(context), color: cs.onSurface),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       body: SingleChildScrollView(
         child: Center(
           child: Column(
@@ -103,24 +102,30 @@ class _MyHomePageState extends State<MyHomePage> {
                 height: 166,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.grey[300],
+                  color: cs.surfaceContainerHighest, // ✅ was grey[300]
                 ),
                 child: Row(
                   children: <Widget>[
                     Text(
                       'Dashboard',
-                      style: TextStyle(fontSize: AppText.title(context)),
+                      style: TextStyle(
+                        fontSize: AppText.title(context),
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const Spacer(),
-                    const VerticalDivider(thickness: 2, color: Colors.grey),
-                    const Icon(Icons.person, size: 50),
+
+                    VerticalDivider(thickness: 2, color: cs.outlineVariant),
+
+                    Icon(Icons.person, size: 50, color: cs.onSurface),
                     const SizedBox(width: 10),
                     SizedBox(
                       height: 50,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Text('Name'),
+                          Text('Name', style: TextStyle(color: cs.onSurface)),
                           StreamBuilder<DocumentSnapshot>(
                             stream: _db
                                 .collection('users')
@@ -128,11 +133,17 @@ class _MyHomePageState extends State<MyHomePage> {
                                 .snapshots(),
                             builder: (context, snap) {
                               if (!snap.hasData || !snap.data!.exists) {
-                                return const Text('-');
+                                return Text(
+                                  '-',
+                                  style: TextStyle(color: cs.onSurfaceVariant),
+                                );
                               }
                               final m =
                                   snap.data!.data() as Map<String, dynamic>;
-                              return Text((m['name'] ?? '-').toString());
+                              return Text(
+                                (m['name'] ?? '-').toString(),
+                                style: TextStyle(color: cs.onSurfaceVariant),
+                              );
                             },
                           ),
                         ],
@@ -156,7 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       height: 547,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Colors.grey[300],
+                        color: cs.surfaceContainerHighest, // ✅
                       ),
                       child: Column(
                         children: <Widget>[
@@ -165,7 +176,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               Icon(
                                 Icons.sunny,
                                 size: AppIcon.huge(context),
-                                color: Colors.grey[500],
+                                color: cs.onSurfaceVariant, // ✅ was grey[500]
                               ),
                               const SizedBox(width: 10),
                               Flexible(
@@ -175,14 +186,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                     Text(
                                       'Time: $currentTime',
                                       style: TextStyle(
-                                        color: Colors.grey[500],
+                                        color: cs.onSurfaceVariant,
                                         fontSize: AppText.subtitle(context),
                                       ),
                                     ),
                                     Text(
                                       'Realtime insight',
                                       style: TextStyle(
-                                        color: Colors.grey[500],
+                                        color: cs.onSurfaceVariant,
                                         fontSize: AppText.body(context),
                                       ),
                                     ),
@@ -199,12 +210,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                   'Today:',
                                   style: TextStyle(
                                     fontSize: AppText.title(context),
+                                    color: cs.onSurface,
                                   ),
                                 ),
                                 Text(
                                   today,
                                   style: TextStyle(
                                     fontSize: AppText.subtitle(context),
+                                    color: cs.onSurface,
                                   ),
                                 ),
                               ],
@@ -219,23 +232,22 @@ class _MyHomePageState extends State<MyHomePage> {
                   Expanded(
                     child: Column(
                       children: <Widget>[
-                        // Total Employees
                         _statCard(
                           context,
+                          cs: cs,
                           title: "Total Employees",
                           icon: Icons.person,
                           value: StreamBuilder<QuerySnapshot>(
                             stream: _db.collection('users').snapshots(),
                             builder: (context, snap) {
                               final total = snap.data?.docs.length ?? 0;
-                              return _numText(context, '$total');
+                              return _numText(context, '$total', cs);
                             },
                           ),
                         ),
-
-                        // Late Arrival
                         _statCard(
                           context,
+                          cs: cs,
                           title: "Late Arrival",
                           icon: Icons.alarm_off,
                           value: StreamBuilder<QuerySnapshot>(
@@ -246,7 +258,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 .snapshots(),
                             builder: (context, snap) {
                               final late = snap.data?.docs.length ?? 0;
-                              return _numText(context, '$late');
+                              return _numText(context, '$late', cs);
                             },
                           ),
                         ),
@@ -258,9 +270,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   Expanded(
                     child: Column(
                       children: <Widget>[
-                        // On Time
                         _statCard(
                           context,
+                          cs: cs,
                           title: "On Time",
                           icon: Icons.alarm,
                           value: StreamBuilder<QuerySnapshot>(
@@ -271,14 +283,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                 .snapshots(),
                             builder: (context, snap) {
                               final present = snap.data?.docs.length ?? 0;
-                              return _numText(context, '$present');
+                              return _numText(context, '$present', cs);
                             },
                           ),
                         ),
-
-                        // Early Departures (placeholder = 0)
                         _statCard(
                           context,
+                          cs: cs,
                           title: "Early Departures",
                           icon: Icons.outbond_outlined,
                           value: StreamBuilder<QuerySnapshot>(
@@ -287,7 +298,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                 .where('date', isEqualTo: today)
                                 .snapshots(),
                             builder: (context, snap) {
-                              if (!snap.hasData) return _numText(context, '0');
+                              if (!snap.hasData)
+                                return _numText(context, '0', cs);
 
                               int early = 0;
                               for (final doc in snap.data!.docs) {
@@ -296,11 +308,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                 if (checkOut is! Timestamp) continue;
 
                                 final dt = checkOut.toDate();
-                                final isEarly = dt.hour < 17; // before 17:00
-                                if (isEarly) early++;
+                                if (dt.hour < 17) early++;
                               }
-
-                              return _numText(context, '$early');
+                              return _numText(context, '$early', cs);
                             },
                           ),
                         ),
@@ -312,9 +322,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   Expanded(
                     child: Column(
                       children: <Widget>[
-                        // Absent = totalUsers - checkedInToday
                         _statCard(
                           context,
+                          cs: cs,
                           title: "Absent",
                           icon: Icons.person_off,
                           value: StreamBuilder<QuerySnapshot>(
@@ -335,16 +345,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                       (totalUsers - checkedInToday) < 0
                                       ? 0
                                       : (totalUsers - checkedInToday);
-                                  return _numText(context, '$absent');
+                                  return _numText(context, '$absent', cs);
                                 },
                               );
                             },
                           ),
                         ),
-
-                        // Time Off (placeholder = 0)
                         _statCard(
                           context,
+                          cs: cs,
                           title: "Time Off",
                           icon: Icons.date_range,
                           value: StreamBuilder<QuerySnapshot>(
@@ -353,18 +362,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                 .where('status', isEqualTo: 'accepted')
                                 .snapshots(),
                             builder: (context, snap) {
-                              if (!snap.hasData) return _numText(context, '0');
+                              if (!snap.hasData)
+                                return _numText(context, '0', cs);
 
                               int count = 0;
                               for (final doc in snap.data!.docs) {
                                 final m = doc.data() as Map<String, dynamic>;
-
                                 final from = m['fromDate'];
                                 final to = m['toDate'];
-
-                                if (from is! Timestamp || to is! Timestamp) {
+                                if (from is! Timestamp || to is! Timestamp)
                                   continue;
-                                }
 
                                 final fromDate = DateTime(
                                   from.toDate().year,
@@ -377,12 +384,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                   to.toDate().day,
                                 );
 
-                                final todayDate = DateTime.now();
-                                final t = DateTime(
-                                  todayDate.year,
-                                  todayDate.month,
-                                  todayDate.day,
-                                );
+                                final t0 = DateTime.now();
+                                final t = DateTime(t0.year, t0.month, t0.day);
 
                                 if (!t.isBefore(fromDate) &&
                                     !t.isAfter(toDate)) {
@@ -390,7 +393,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 }
                               }
 
-                              return _numText(context, '$count');
+                              return _numText(context, '$count', cs);
                             },
                           ),
                         ),
@@ -409,6 +412,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // ===================== STAT CARD WIDGET =====================
   Widget _statCard(
     BuildContext context, {
+    required ColorScheme cs,
     required String title,
     required IconData icon,
     required Widget value,
@@ -419,7 +423,7 @@ class _MyHomePageState extends State<MyHomePage> {
       height: 200,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[300],
+        color: cs.surfaceContainerHighest, // ✅ was grey[300]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,18 +438,24 @@ class _MyHomePageState extends State<MyHomePage> {
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey[100],
+                    color: cs.surfaceContainer, // ✅ was grey[100]
                   ),
                   child: Icon(
                     icon,
-                    color: Colors.blue,
+                    color: cs.primary, // ✅ was Colors.blue
                     size: AppIcon.medium(context),
                   ),
                 ),
               ),
             ],
           ),
-          Text(title, style: TextStyle(fontSize: AppText.body(context))),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: AppText.body(context),
+              color: cs.onSurface,
+            ),
+          ),
         ],
       ),
     );
