@@ -11,9 +11,7 @@ class SecuritySite extends StatefulWidget {
   State<SecuritySite> createState() => _SecuritySiteState();
 }
 
-final _auth = FirebaseAuth.instance;
-final _db = FirebaseFirestore.instance;
-
+// ------------------ Responsive helpers ------------------
 class AppText {
   static double title(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
@@ -54,7 +52,12 @@ class AppIcon {
 }
 
 class _SecuritySiteState extends State<SecuritySite> {
+  final _auth = FirebaseAuth.instance;
+  final _db = FirebaseFirestore.instance;
+
   bool shareLocation = true;
+
+  String? get uid => _auth.currentUser?.uid;
 
   @override
   void initState() {
@@ -64,6 +67,7 @@ class _SecuritySiteState extends State<SecuritySite> {
 
   Future<void> _loadPrivacySettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       shareLocation = prefs.getBool('shareLocation') ?? true;
     });
@@ -84,19 +88,22 @@ class _SecuritySiteState extends State<SecuritySite> {
 
     // If user turns ON, request permission
     if (value) {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         await Geolocator.openLocationSettings();
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
+
       if (permission == LocationPermission.denied) {
-        await Geolocator.requestPermission();
+        permission = await Geolocator.requestPermission();
       } else if (permission == LocationPermission.deniedForever) {
         await Geolocator.openAppSettings();
+        return;
       }
-      setState(() {}); // refresh permission badge
+
+      if (mounted) setState(() {}); // refresh permission badge
     }
   }
 
@@ -111,7 +118,7 @@ class _SecuritySiteState extends State<SecuritySite> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _topHeader(context, cs: cs, title: 'Privacy'),
+            _topHeader(context, cs: cs, title: 'Privacy', db: _db, auth: _auth),
             const SizedBox(height: 20),
             Expanded(
               child: SingleChildScrollView(
@@ -131,7 +138,7 @@ class _SecuritySiteState extends State<SecuritySite> {
                                   p == LocationPermission.always ||
                                   p == LocationPermission.whileInUse;
 
-                              // status icon color: keep green/red for clarity
+                              // keep green/red for clarity
                               final statusColor = (!shareLocation)
                                   ? cs.onSurfaceVariant
                                   : (allowed ? Colors.green : Colors.red);
@@ -142,6 +149,7 @@ class _SecuritySiteState extends State<SecuritySite> {
                                 decoration: BoxDecoration(
                                   color: cs.surfaceContainer,
                                   borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: cs.outlineVariant),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,6 +192,18 @@ class _SecuritySiteState extends State<SecuritySite> {
                                                     _handleLocationToggle,
                                               ),
                                               const SizedBox(width: 8),
+                                              if (shareLocation && !allowed)
+                                                TextButton(
+                                                  onPressed: () async {
+                                                    await Geolocator.openAppSettings();
+                                                    if (mounted) {
+                                                      setState(() {});
+                                                    }
+                                                  },
+                                                  child: const Text(
+                                                    "Open Location Settings",
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ],
@@ -197,7 +217,6 @@ class _SecuritySiteState extends State<SecuritySite> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     _sectionCard(
@@ -228,7 +247,11 @@ class _SecuritySiteState extends State<SecuritySite> {
                               title: "Delete Activity History?",
                               message:
                                   "This action cannot be undone. Continue?",
-                              onConfirm: () => Navigator.pop(context),
+                              onConfirm: () {
+                                // TODO: delete logs if you have a collection
+                                // Example:
+                                // _db.collection('logs').where('uid', isEqualTo: uid).get()...
+                              },
                             ),
                           ),
                         ],
@@ -273,7 +296,11 @@ Widget _topHeader(
   BuildContext context, {
   required ColorScheme cs,
   required String title,
+  required FirebaseFirestore db,
+  required FirebaseAuth auth,
 }) {
+  final uid = auth.currentUser?.uid;
+
   return Container(
     padding: const EdgeInsets.all(16),
     margin: const EdgeInsets.all(8),
@@ -293,27 +320,47 @@ Widget _topHeader(
         ),
         const Spacer(),
         VerticalDivider(thickness: 2, color: cs.outlineVariant),
-        const Icon(Icons.person, size: 50),
+        Icon(Icons.person, size: 50, color: cs.onSurface),
         const SizedBox(width: 10),
         SizedBox(
           height: 50,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('Name'),
-              StreamBuilder<DocumentSnapshot>(
-                stream: _db
-                    .collection('users')
-                    .doc(_auth.currentUser?.uid)
-                    .snapshots(),
-                builder: (context, snap) {
-                  if (!snap.hasData || !snap.data!.exists) {
-                    return const Text('-');
-                  }
-                  final m = snap.data!.data() as Map<String, dynamic>;
-                  return Text((m['name'] ?? '-').toString());
-                },
-              ),
+              Text('Name', style: TextStyle(color: cs.onSurface)),
+              if (uid == null)
+                Text('-', style: TextStyle(color: cs.onSurfaceVariant))
+              else
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: db.collection('users').doc(uid).snapshots(),
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return Text(
+                        'Error',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      );
+                    }
+                    if (!snap.hasData) {
+                      return Text(
+                        'Loading...',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      );
+                    }
+                    if (!snap.data!.exists) {
+                      return Text(
+                        '-',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      );
+                    }
+                    final m = snap.data!.data() ?? {};
+                    return Text(
+                      (m['name'] ?? '-').toString(),
+                      style: TextStyle(color: cs.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -334,6 +381,7 @@ Widget _sectionCard({
     decoration: BoxDecoration(
       color: cs.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: cs.outlineVariant),
     ),
     child: Column(
       children: [
@@ -374,6 +422,7 @@ Widget _actionTile({
       decoration: BoxDecoration(
         color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Row(
         children: [
@@ -409,12 +458,12 @@ Widget _actionTile({
 void _showInfo(BuildContext context, String title, String message) {
   showDialog(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (dialogContext) => AlertDialog(
       title: Text(title),
       content: Text(message),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text("OK"),
         ),
       ],
@@ -431,12 +480,12 @@ void _confirmDanger(
 }) {
   showDialog(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (dialogContext) => AlertDialog(
       title: Text(title),
       content: Text(message),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text("Cancel"),
         ),
         ElevatedButton(
@@ -444,7 +493,10 @@ void _confirmDanger(
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
           ),
-          onPressed: onConfirm,
+          onPressed: () {
+            Navigator.of(dialogContext).pop(); // ✅ close dialog first
+            onConfirm();
+          },
           child: const Text("Confirm"),
         ),
       ],

@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// ❌ Remove this main() when dashboard is inside your app.
-// void main() => runApp(const DashboardSite());
-
 class DashboardSite extends StatelessWidget {
   const DashboardSite({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: No MaterialApp here (use the app's global MaterialApp)
     return const MyHomePage(title: 'Geo Attendant');
   }
 }

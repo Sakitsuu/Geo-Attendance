@@ -407,40 +407,50 @@ class _DepartmentPageState extends State<DepartmentPage> {
   }
 
   Widget _header(BuildContext context, String role) {
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.all(8),
       height: 166,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[300],
+        color: cs.surfaceContainerHighest, // ✅ theme
       ),
       child: Row(
         children: [
           Text(
             'Department',
-            style: TextStyle(fontSize: AppText.title(context)),
+            style: TextStyle(
+              fontSize: AppText.title(context),
+              color: cs.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.75),
+              color: cs.surface.withOpacity(0.9),
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: cs.outlineVariant),
             ),
-            child: Text('Role: $role'),
+            child: Text('Role: $role', style: TextStyle(color: cs.onSurface)),
           ),
           const SizedBox(width: 12),
-          const VerticalDivider(thickness: 2, color: Colors.grey),
-          Icon(Icons.person, size: AppIcon.large(context)),
+          VerticalDivider(thickness: 2, color: cs.outlineVariant),
+          Icon(Icons.person, size: AppIcon.large(context), color: cs.onSurface),
           const SizedBox(width: 10),
           SizedBox(
             height: 50,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('User'),
-                Text(uid.isEmpty ? '@guest' : '@$uid'),
+                Text('User', style: TextStyle(color: cs.onSurface)),
+                Text(
+                  uid.isEmpty ? '@guest' : '@$uid',
+                  style: TextStyle(color: cs.primary),
+                ),
               ],
             ),
           ),
@@ -461,13 +471,14 @@ class _DepartmentPageState extends State<DepartmentPage> {
     if (w < 700) crossAxisCount = 1;
 
     final double cardHeight = (w < 700) ? 180 : 170;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[300],
+        color: cs.surfaceContainerHighest, // ✅ theme
       ),
       child: GridView.builder(
         itemCount: items.length,
@@ -486,6 +497,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
   Widget _deptCard(BuildContext context, DepartmentItem d, bool isManager) {
     final icon = _iconFromString(d.icon);
+    final cs = Theme.of(context).colorScheme;
 
     return InkWell(
       onTap: () {
@@ -502,7 +514,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey[100],
+          color: cs.surface,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,17 +577,19 @@ class _DepartmentPageState extends State<DepartmentPage> {
   }
 
   Widget _leadersBox(BuildContext context, List<DepartmentItem> items) {
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[300],
+        color: cs.surface,
       ),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -661,6 +675,7 @@ class DepartmentMembersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
+    final cs = Theme.of(context).colorScheme;
 
     // ✅ case-insensitive match by adding "departmentLower" is best
     // But for now, we match exact departmentName.

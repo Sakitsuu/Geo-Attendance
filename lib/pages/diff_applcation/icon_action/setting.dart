@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/about_app.dart';
 import 'package:geo_attendance_new_ui/pages/theme_controller.dart';
 import 'package:geo_attendance_new_ui/pages/diff_applcation/icon_action/edit_profile.dart';
 
@@ -52,17 +53,8 @@ class _SettingPageState extends State<SettingPage> {
     ).showSnackBar(SnackBar(content: Text('Reset link sent to $email')));
   }
 
-  Future<void> _logout() async {
-    await _auth.signOut();
-    if (!mounted) return;
-
-    // Go back to first route (your app should show login on first route)
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: rebuild this page when theme changes
     return AnimatedBuilder(
       animation: themeController,
       builder: (context, _) {
@@ -271,17 +263,16 @@ class _SettingPageState extends State<SettingPage> {
                             'Geo Attendant',
                             style: TextStyle(color: cs.onSurfaceVariant),
                           ),
-                        ),
-                        Divider(height: 1, color: cs.outlineVariant),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AboutAppPage(),
+                              ),
+                            );
 
-                        // ✅ Logout at the bottom (as you wanted)
-                        ListTile(
-                          leading: Icon(Icons.logout, color: cs.error),
-                          title: Text(
-                            'Logout',
-                            style: TextStyle(color: cs.error),
-                          ),
-                          onTap: _logout,
+                            setState(() {});
+                          },
                         ),
                       ],
                     ),
