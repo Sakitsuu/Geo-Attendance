@@ -23,13 +23,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String get uid => _auth.currentUser!.uid;
-
-  // ✅ Choose the correct type for attendance.date
-  // If your attendance.date is stored as String "yyyy-MM-dd" keep this false.
-  // If your attendance.date is stored as Timestamp, set this true.
   static const bool attendanceDateIsTimestamp = false;
 
-  // ---------- helpers ----------
   String _dateKey(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
@@ -75,7 +70,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return 'Time-off';
   }
 
-  // ---------- request dialog ----------
   Future<void> _openRequestDialog(String type) async {
     DateTime? fromDate;
     DateTime? toDate;
@@ -142,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
               try {
                 await _db.collection('requests').add({
                   'uid': uid,
-                  'type': type, // 'time_off' or 'leave'
+                  'type': type,
                   'reason': reason,
                   'fromDate': Timestamp.fromDate(fromDate!),
                   'toDate': Timestamp.fromDate(toDate!),
@@ -232,16 +226,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ✅ Attendance Rate (fixed)
-  // - shows real errors instead of just "Err"
-  // - adds orderBy('date') to satisfy query requirements
-  // - supports String or Timestamp attendance.date (toggle at top)
   Widget _monthlyRateWidget() {
     final now = DateTime.now();
     final monthStartDate = DateTime(now.year, now.month, 1);
     final monthNextDate = DateTime(now.year, now.month + 1, 1);
-
-    // used for clamping accepted off days
     final monthStart = monthStartDate;
     final monthNext = monthNextDate;
 
@@ -259,8 +247,8 @@ class _ProfilePageState extends State<ProfilePage> {
           .orderBy('date')
           .snapshots();
     } else {
-      final startKey = _monthStartKey(now); // yyyy-MM-01
-      final endKey = _nextMonthKey(now); // next yyyy-MM-01
+      final startKey = _monthStartKey(now);
+      final endKey = _nextMonthKey(now);
 
       attendanceStream = _db
           .collection('attendance')
@@ -301,13 +289,12 @@ class _ProfilePageState extends State<ProfilePage> {
               dateKey = _dateKey(DateTime(d.year, d.month, d.day));
             }
           } else {
-            dateKey = (m['date'] ?? '').toString(); // yyyy-MM-dd
+            dateKey = (m['date'] ?? '').toString();
           }
 
-          final status = (m['status'] ?? '').toString(); // PRESENT / LATE
+          final status = (m['status'] ?? '').toString();
           if (dateKey.isEmpty) continue;
 
-          // keep worst (LATE worse than PRESENT)
           final existing = statusByDate[dateKey];
           if (existing == null) {
             statusByDate[dateKey] = status;
@@ -351,7 +338,6 @@ class _ProfilePageState extends State<ProfilePage> {
               from = DateTime(from.year, from.month, from.day);
               to = DateTime(to.year, to.month, to.day);
 
-              // clamp to this month
               if (to.isBefore(monthStart) || from.isAfter(monthNext)) continue;
 
               final start = from.isBefore(monthStart) ? monthStart : from;
@@ -379,7 +365,7 @@ class _ProfilePageState extends State<ProfilePage> {
               final d = DateTime(now.year, now.month, day);
               final key = _dateKey(d);
 
-              final st = statusByDate[key]; // PRESENT / LATE / null
+              final st = statusByDate[key];
               final isOff = offDays.contains(key);
 
               if (st == 'LATE') {
@@ -392,7 +378,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 score -= 1;
               }
 
-              // absent: no attendance doc and not off
               if (st == null && !isOff) {
                 absentDays++;
                 score -= 5;
@@ -424,9 +409,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ✅ Engagement Rate (fixed)
-  // - adds orderBy('createdAt') for range filter
-  // - shows real errors
   Widget _engagementRateWidget() {
     final now = DateTime.now();
     final monthStart = Timestamp.fromDate(DateTime(now.year, now.month, 1));
@@ -508,7 +490,6 @@ class _ProfilePageState extends State<ProfilePage> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // HEADER
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),
@@ -551,8 +532,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
-
-                // STATS
                 Row(
                   children: [
                     _statCard(
@@ -569,8 +548,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-
-                // REQUESTS
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),

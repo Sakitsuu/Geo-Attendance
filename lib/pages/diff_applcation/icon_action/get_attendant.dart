@@ -24,19 +24,15 @@ class _GetAttendanceState extends State<GetAttendance> {
 
   bool? isLocationAllowed;
 
-  // Office config
   final double officeLatitude = 11.5671548;
   final double officeLongitude = 104.8958224;
   final double allowedDistanceInMeters = 50;
 
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
-
-  // Firestore
   final CollectionReference attendanceRef = FirebaseFirestore.instance
       .collection('attendance');
 
-  // User profile (from Auth + Firestore)
   bool loadingUser = true;
   String workerId = "";
   String workerName = "";
@@ -110,8 +106,6 @@ class _GetAttendanceState extends State<GetAttendance> {
     final docRef = attendanceRef.doc(docId);
 
     final snap = await docRef.get();
-
-    // 1) First time today => check-in
     if (!snap.exists) {
       await docRef.set({
         'workerId': workerId,
@@ -132,8 +126,6 @@ class _GetAttendanceState extends State<GetAttendance> {
       });
       return;
     }
-
-    // 2) Second time today => check-out (only if not already checked out)
     final data = snap.data() as Map<String, dynamic>? ?? {};
     final alreadyCheckedOut = data['checkOut'] != null;
 
@@ -225,7 +217,7 @@ class _GetAttendanceState extends State<GetAttendance> {
     if (statusMessage.contains("PRESENT")) return Colors.green;
     if (statusMessage.contains("LATE")) return Colors.orange;
     if (statusMessage.contains("❌")) return Colors.red;
-    return cs.onSurface; // ✅ was Colors.black
+    return cs.onSurface;
   }
 
   @override
@@ -239,7 +231,6 @@ class _GetAttendanceState extends State<GetAttendance> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.all(8),
@@ -261,11 +252,10 @@ class _GetAttendanceState extends State<GetAttendance> {
                   const Spacer(),
                   VerticalDivider(
                     thickness: 2,
-                    width: 40, // ✅ same as Graphic
+                    width: 40,
                     color: cs.outlineVariant,
                   ),
 
-                  // Name block EXACT same structure as Graphic
                   const Icon(Icons.person, size: 50),
                   const SizedBox(width: 10),
                   SizedBox(

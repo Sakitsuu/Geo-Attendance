@@ -7,7 +7,6 @@ class NotificationSite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: no MaterialApp here
     return const NotificationPage();
   }
 }
@@ -74,10 +73,8 @@ class _NotificationPageState extends State<NotificationPage> {
               final title = (data['title'] ?? 'Notification').toString();
               final message = (data['message'] ?? '').toString();
 
-              // type: "request" or "password"
               final type = (data['type'] ?? '').toString();
 
-              // status only for request: "pending"/"accepted"/"rejected"
               final status = (data['status'] ?? '').toString();
 
               final ts = data['createdAt'];
@@ -91,7 +88,6 @@ class _NotificationPageState extends State<NotificationPage> {
               return Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  // ✅ theme-based colors (dark mode safe)
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: cs.outlineVariant),
@@ -148,11 +144,8 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  // icon based on notification type + status
   IconData _iconFor(String type, String status) {
     if (type == 'password') return Icons.lock_reset;
-
-    // request
     switch (status) {
       case 'accepted':
         return Icons.check_circle_outline;
@@ -164,13 +157,10 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  // chip only for request type
   Widget? _statusChip(String type, String status) {
     if (type == 'password') return null;
 
     String label = status.isEmpty ? 'pending' : status;
-
-    // Keeping these status colors is OK (they still look fine in dark mode)
     Color bg;
     Color fg;
 

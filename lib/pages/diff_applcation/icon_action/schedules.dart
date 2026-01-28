@@ -32,7 +32,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
   String dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
   String monthKey(DateTime d) => DateFormat('yyyy-MM').format(d);
 
-  // ---------------- ADD EVENT ----------------
   Future<void> _addEvent(DateTime date) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -94,7 +93,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
       ),
       body: Column(
         children: [
-          // ---------- MONTH HEADER ----------
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -119,8 +117,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
               ],
             ),
           ),
-
-          // ---------- WEEKDAYS ----------
           Row(
             children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                 .map(
@@ -140,8 +136,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
           ),
 
           const SizedBox(height: 8),
-
-          // ---------- CALENDAR GRID ----------
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _db.collection('events').snapshots(),
@@ -152,9 +146,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
                 if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
-                // Store ONE title per day (if you add multiple events same day,
-                // later we can change this to a list)
                 final events = <String, String>{};
 
                 for (final doc in snap.data!.docs) {
@@ -199,7 +190,6 @@ class _SchedulesSiteState extends State<SchedulesSite> {
                         now.month == date.month &&
                         now.day == date.day;
 
-                    // ✅ colors
                     final bg = isToday ? cs.primary : cs.surface;
                     final border = isToday ? cs.primary : cs.outlineVariant;
                     final textColor = isToday ? cs.onPrimary : cs.onSurface;

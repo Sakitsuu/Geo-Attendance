@@ -433,7 +433,7 @@ class DesktopLayout extends StatelessWidget {
                 child: Center(
                   child: Image.asset(
                     Phone_desgin,
-                    width: 520, // adjust as you like
+                    width: 520,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -454,26 +454,18 @@ class BlueGradientBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Gradient background
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1E4ED8), // deep blue
-                Color(0xFF1F8EF1), // lighter blue
-              ],
+              colors: [Color(0xFF1E4ED8), Color(0xFF1F8EF1)],
             ),
           ),
         ),
-
-        // Decorative circles
         Positioned(top: 100, left: -80, child: _circle(180, 0.08)),
         Positioned(bottom: 120, right: -60, child: _circle(160, 0.06)),
         Positioned(top: -50, right: 100, child: _circle(120, 0.05)),
-
-        // Page content
         child,
       ],
     );

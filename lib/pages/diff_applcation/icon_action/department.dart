@@ -7,12 +7,10 @@ class DepartmentSite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: no MaterialApp here (use global theme from main.dart)
     return const DepartmentPage();
   }
 }
 
-// ------------------ Responsive helpers ------------------
 class AppText {
   static double title(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
@@ -42,13 +40,12 @@ class AppIcon {
   }
 }
 
-// ------------------ Department Model ------------------
 class DepartmentItem {
-  final String id; // docId in departments
-  final String name; // departments.name
-  final int totalEmployees; // computed from users.department
-  final String leaderName; // departments.leaderName
-  final String icon; // departments.icon
+  final String id;
+  final String name;
+  final int totalEmployees;
+  final String leaderName;
+  final String icon;
 
   const DepartmentItem({
     required this.id,
@@ -99,7 +96,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
     }
   }
 
-  // ------------------ CRUD (manager only UI) ------------------
   Future<void> _openDeptDialog({
     String? docId,
     Map<String, dynamic>? existing,
@@ -143,9 +139,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
               try {
                 if (docId == null) {
                   payload['createdAt'] = FieldValue.serverTimestamp();
-                  await _db
-                      .collection('departments')
-                      .add(payload); // auto id OK
+                  await _db.collection('departments').add(payload);
                 } else {
                   await _db
                       .collection('departments')
@@ -268,7 +262,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
     }
   }
 
-  // ------------------ UI ------------------
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
@@ -337,7 +330,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
                               );
                             }
 
-                            // ✅ COUNT USERS BY users.department (case-insensitive)
                             final Map<String, int> countsByDept = {};
                             for (final u in userDocs) {
                               final dep = (u.data()['department'] ?? '')
@@ -415,7 +407,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
       height: 166,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: cs.surfaceContainerHighest, // ✅ theme
+        color: cs.surfaceContainerHighest,
       ),
       child: Row(
         children: [
@@ -478,7 +470,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: cs.surfaceContainerHighest, // ✅ theme
+        color: cs.surfaceContainerHighest,
       ),
       child: GridView.builder(
         itemCount: items.length,
@@ -661,7 +653,6 @@ class _DepartmentPageState extends State<DepartmentPage> {
   }
 }
 
-// ------------------ Members Page ------------------
 class DepartmentMembersPage extends StatelessWidget {
   final String departmentName;
   final IconData icon;
@@ -677,8 +668,6 @@ class DepartmentMembersPage extends StatelessWidget {
     final db = FirebaseFirestore.instance;
     final cs = Theme.of(context).colorScheme;
 
-    // ✅ case-insensitive match by adding "departmentLower" is best
-    // But for now, we match exact departmentName.
     return Scaffold(
       appBar: AppBar(title: Text('Members: $departmentName')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

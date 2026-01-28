@@ -86,7 +86,6 @@ class _SettingPageState extends State<SettingPage> {
               return ListView(
                 padding: const EdgeInsets.all(14),
                 children: [
-                  // ===== Profile Card =====
                   Card(
                     color: cs.surfaceContainerHighest,
                     child: Padding(
@@ -130,8 +129,6 @@ class _SettingPageState extends State<SettingPage> {
                   ),
 
                   const SizedBox(height: 12),
-
-                  // ===== Account section =====
                   Card(
                     color: cs.surfaceContainerHighest,
                     child: Column(
@@ -149,8 +146,6 @@ class _SettingPageState extends State<SettingPage> {
                                 builder: (_) => const EditProfilePage(),
                               ),
                             );
-
-                            // ✅ Refresh settings page UI (reload name/email shown here)
                             setState(() {});
                           },
                         ),
@@ -159,8 +154,6 @@ class _SettingPageState extends State<SettingPage> {
                   ),
 
                   const SizedBox(height: 12),
-
-                  // ===== Appearance section =====
                   Card(
                     color: cs.surfaceContainerHighest,
                     child: Column(
@@ -193,8 +186,6 @@ class _SettingPageState extends State<SettingPage> {
                   ),
 
                   const SizedBox(height: 12),
-
-                  // ===== Security section =====
                   Card(
                     color: cs.surfaceContainerHighest,
                     child: Column(
@@ -247,8 +238,6 @@ class _SettingPageState extends State<SettingPage> {
                   ),
 
                   const SizedBox(height: 12),
-
-                  // ===== About =====
                   Card(
                     color: cs.surfaceContainerHighest,
                     child: Column(

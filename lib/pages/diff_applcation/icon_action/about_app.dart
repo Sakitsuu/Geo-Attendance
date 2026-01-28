@@ -22,7 +22,6 @@ class AboutAppPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // App title
                 Text(
                   'Geo_Attendant',
                   style: TextStyle(
@@ -32,8 +31,6 @@ class AboutAppPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // Subtitle
                 Text(
                   'Location-Based Attendance Management System',
                   style: TextStyle(
@@ -43,8 +40,6 @@ class AboutAppPage extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
-
-                // Description
                 Text(
                   'Geo_Attendant is a location-based attendance management system designed to '
                   'ensure accurate, secure, and transparent workforce attendance tracking. '
@@ -88,8 +83,6 @@ class AboutAppPage extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 32),
-
-                // Features section
                 Text(
                   'Key Features',
                   style: TextStyle(

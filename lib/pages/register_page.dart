@@ -1,5 +1,4 @@
 import 'dart:ui';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
@@ -14,7 +13,6 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // --- FocusNodes ---
   final _idFocus = FocusNode();
   final _nameFocus = FocusNode();
   final _deptFocus = FocusNode();
@@ -23,7 +21,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passFocus = FocusNode();
   final _confirmFocus = FocusNode();
 
-  // --- Controllers ---
   final TextEditingController idController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController departmentController = TextEditingController();
@@ -35,7 +32,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // --- UI state ---
   bool hidePw = true;
   bool hideConfirm = true;
   bool isLoading = false;
@@ -193,8 +189,6 @@ class _SignUpPageState extends State<SignUpPage> {
             bottom: 120,
             child: _blob(200, Colors.white.withOpacity(0.10)),
           ),
-
-          // Glass card
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
@@ -347,7 +341,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 focusNode: _confirmFocus,
                                 textInputAction: TextInputAction.done,
                                 onSubmitted: (_) {
-                                  if (!isLoading) _signUp(); // ✅ Enter submits
+                                  if (!isLoading) _signUp();
                                 },
                                 toggle: () =>
                                     setState(() => hideConfirm = !hideConfirm),
@@ -448,7 +442,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // ---- UI helpers ----
   static Widget _blob(double size, Color color) {
     return Container(
       width: size,
@@ -509,7 +502,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // ✅ Normal input (always black text)
   Widget _input({
     required TextEditingController controller,
     required String hint,
@@ -544,7 +536,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // ✅ Password input (always black text + Enter flow)
   Widget _passwordInput({
     required TextEditingController controller,
     required bool hidden,

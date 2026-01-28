@@ -11,7 +11,6 @@ class SecuritySite extends StatefulWidget {
   State<SecuritySite> createState() => _SecuritySiteState();
 }
 
-// ------------------ Responsive helpers ------------------
 class AppText {
   static double title(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
@@ -85,8 +84,6 @@ class _SecuritySiteState extends State<SecuritySite> {
   Future<void> _handleLocationToggle(bool value) async {
     setState(() => shareLocation = value);
     await _saveShareLocation(value);
-
-    // If user turns ON, request permission
     if (value) {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -103,7 +100,7 @@ class _SecuritySiteState extends State<SecuritySite> {
         return;
       }
 
-      if (mounted) setState(() {}); // refresh permission badge
+      if (mounted) setState(() {});
     }
   }
 
@@ -137,8 +134,6 @@ class _SecuritySiteState extends State<SecuritySite> {
                               final allowed =
                                   p == LocationPermission.always ||
                                   p == LocationPermission.whileInUse;
-
-                              // keep green/red for clarity
                               final statusColor = (!shareLocation)
                                   ? cs.onSurfaceVariant
                                   : (allowed ? Colors.green : Colors.red);
@@ -248,7 +243,7 @@ class _SecuritySiteState extends State<SecuritySite> {
                               message:
                                   "This action cannot be undone. Continue?",
                               onConfirm: () {
-                                // TODO: delete logs if you have a collection
+                                // TODO: delete logs
                                 // Example:
                                 // _db.collection('logs').where('uid', isEqualTo: uid).get()...
                               },
@@ -291,7 +286,6 @@ class _SecuritySiteState extends State<SecuritySite> {
   }
 }
 
-/// ✅ Shared UI widgets (header/cards/actions)
 Widget _topHeader(
   BuildContext context, {
   required ColorScheme cs,
@@ -494,7 +488,7 @@ void _confirmDanger(
             foregroundColor: Colors.white,
           ),
           onPressed: () {
-            Navigator.of(dialogContext).pop(); // ✅ close dialog first
+            Navigator.of(dialogContext).pop();
             onConfirm();
           },
           child: const Text("Confirm"),

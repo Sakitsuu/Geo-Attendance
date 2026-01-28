@@ -42,8 +42,6 @@ class WorkerPage extends StatelessWidget {
             ),
             fontFamily: 'MomoTrustDisplay',
           ),
-
-          // ✅ THIS makes switching work
           themeMode: themeController.mode,
 
           home: const MyHomePage(title: 'Geo Attendant'),
@@ -170,7 +168,6 @@ class _MyHomePageState extends State<MyHomePage> {
                               children: <Widget>[
                                 TextButton(
                                   onPressed: () {
-                                    // Dachboard Site
                                     setState(() {
                                       selectedIndex = 2;
                                       select(2);
@@ -188,7 +185,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // Graphic Site
                                     setState(() {
                                       selectedIndex = 3;
                                       select(3);
@@ -206,7 +202,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // Profile Site
                                     setState(() {
                                       selectedIndex = 4;
                                       select(4);
@@ -224,7 +219,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // Department Site
                                     setState(() {
                                       selectedIndex = 5;
                                       select(5);
@@ -242,7 +236,6 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // List Worker Site
                                     setState(() {
                                       selectedIndex = 6;
                                       select(6);

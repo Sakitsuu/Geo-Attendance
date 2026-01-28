@@ -27,5 +27,4 @@ class ThemeController extends ChangeNotifier {
   }
 }
 
-// ✅ global instance
 final themeController = ThemeController();
