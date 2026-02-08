@@ -174,7 +174,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
                       controller: leaderCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Team leader name (optional)',
-                        hintText: 'e.g. Mr. John De',
+                        hintText: 'e.g. John Doe',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -272,8 +272,10 @@ class _DepartmentPageState extends State<DepartmentPage> {
       builder: (context, roleSnap) {
         final role = (roleSnap.data ?? 'staff').toLowerCase();
         final bool isManager = role == 'manager';
+        final cs = Theme.of(context).colorScheme;
 
         return Scaffold(
+          backgroundColor: cs.surface,
           floatingActionButton: isManager
               ? FloatingActionButton(
                   onPressed: () => _openDeptDialog(),
@@ -281,115 +283,111 @@ class _DepartmentPageState extends State<DepartmentPage> {
                 )
               : null,
           body: SingleChildScrollView(
+            // ✅ FULL WIDTH like dashboard: Center + Column only (NO ConstrainedBox)
             child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1400),
-                child: Column(
-                  children: [
-                    _header(context, role),
-                    const SizedBox(height: 16),
+              child: Column(
+                children: [
+                  _header(context, role),
 
-                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: _db
-                          .collection('departments')
-                          .orderBy('name')
-                          .snapshots(),
-                      builder: (context, deptSnap) {
-                        if (deptSnap.hasError)
-                          return _errorBox('Error: ${deptSnap.error}');
-                        if (!deptSnap.hasData) {
-                          return const Padding(
-                            padding: EdgeInsets.all(24.0),
-                            child: CircularProgressIndicator(),
-                          );
-                        }
+                  const SizedBox(height: 75), // ✅ match dashboard spacing
 
-                        return StreamBuilder<
-                          QuerySnapshot<Map<String, dynamic>>
-                        >(
-                          stream: _db.collection('users').snapshots(),
-                          builder: (context, userSnap) {
-                            if (userSnap.hasError)
-                              return _errorBox('Error: ${userSnap.error}');
-                            if (!userSnap.hasData) {
-                              return const Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: CircularProgressIndicator(),
-                              );
-                            }
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _db
+                        .collection('departments')
+                        .orderBy('name')
+                        .snapshots(),
+                    builder: (context, deptSnap) {
+                      if (deptSnap.hasError)
+                        return _errorBox('Error: ${deptSnap.error}');
+                      if (!deptSnap.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24.0),
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                            final deptDocs = deptSnap.data!.docs;
-                            final userDocs = userSnap.data!.docs;
+                      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: _db.collection('users').snapshots(),
+                        builder: (context, userSnap) {
+                          if (userSnap.hasError)
+                            return _errorBox('Error: ${userSnap.error}');
+                          if (!userSnap.hasData) {
+                            return const Padding(
+                              padding: EdgeInsets.all(24.0),
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                            if (deptDocs.isEmpty) {
-                              return _emptyBox(
-                                'No departments yet',
-                                isManager
-                                    ? 'Tap + to add a department (e.g. IT, Sale).'
-                                    : 'Ask manager to create departments.',
-                              );
-                            }
+                          final deptDocs = deptSnap.data!.docs;
+                          final userDocs = userSnap.data!.docs;
 
-                            final Map<String, int> countsByDept = {};
-                            for (final u in userDocs) {
-                              final dep = (u.data()['department'] ?? '')
-                                  .toString()
-                                  .trim()
-                                  .toLowerCase();
-                              if (dep.isEmpty) continue;
-                              countsByDept[dep] = (countsByDept[dep] ?? 0) + 1;
-                            }
+                          if (deptDocs.isEmpty) {
+                            return _emptyBox(
+                              'No departments yet',
+                              isManager
+                                  ? 'Tap + to add a department (e.g. IT, Sale).'
+                                  : 'Ask manager to create departments.',
+                            );
+                          }
 
-                            final items = deptDocs.map((d) {
-                              final data = d.data();
-                              final depId = d.id;
-                              final depName = (data['name'] ?? depId)
-                                  .toString();
-                              final key = depName.trim().toLowerCase();
+                          final Map<String, int> countsByDept = {};
+                          for (final u in userDocs) {
+                            final dep = (u.data()['department'] ?? '')
+                                .toString()
+                                .trim()
+                                .toLowerCase();
+                            if (dep.isEmpty) continue;
+                            countsByDept[dep] = (countsByDept[dep] ?? 0) + 1;
+                          }
 
-                              return DepartmentItem(
-                                id: depId,
-                                name: depName,
-                                totalEmployees: countsByDept[key] ?? 0,
-                                leaderName: (data['leaderName'] ?? '-')
-                                    .toString(),
-                                icon: (data['icon'] ?? 'group').toString(),
-                              );
-                            }).toList();
+                          final items = deptDocs.map((d) {
+                            final data = d.data();
+                            final depId = d.id;
+                            final depName = (data['name'] ?? depId).toString();
+                            final key = depName.trim().toLowerCase();
 
-                            if (isSmall) {
-                              return Column(
-                                children: [
-                                  _departmentGrid(context, items, isManager),
-                                  const SizedBox(height: 16),
-                                  _leadersBox(context, items),
-                                ],
-                              );
-                            }
+                            return DepartmentItem(
+                              id: depId,
+                              name: depName,
+                              totalEmployees: countsByDept[key] ?? 0,
+                              leaderName: (data['leaderName'] ?? '-')
+                                  .toString(),
+                              icon: (data['icon'] ?? 'group').toString(),
+                            );
+                          }).toList();
 
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          if (isSmall) {
+                            return Column(
                               children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: _departmentGrid(
-                                    context,
-                                    items,
-                                    isManager,
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 1,
-                                  child: _leadersBox(context, items),
-                                ),
+                                _departmentGrid(context, items, isManager),
+                                const SizedBox(height: 16),
+                                _leadersBox(context, items),
                               ],
                             );
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                          }
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: _departmentGrid(
+                                  context,
+                                  items,
+                                  isManager,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: _leadersBox(context, items),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
@@ -398,19 +396,21 @@ class _DepartmentPageState extends State<DepartmentPage> {
     );
   }
 
+  /// ✅ Header matches dashboard style + shows Name (from Firestore)
   Widget _header(BuildContext context, String role) {
     final cs = Theme.of(context).colorScheme;
+    final user = _auth.currentUser;
 
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.all(8),
-      height: 166,
+      height: 166, // same as dashboard
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: cs.surfaceContainerHighest,
       ),
       child: Row(
-        children: [
+        children: <Widget>[
           Text(
             'Department',
             style: TextStyle(
@@ -420,6 +420,8 @@ class _DepartmentPageState extends State<DepartmentPage> {
             ),
           ),
           const Spacer(),
+
+          // Role badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
@@ -429,20 +431,44 @@ class _DepartmentPageState extends State<DepartmentPage> {
             ),
             child: Text('Role: $role', style: TextStyle(color: cs.onSurface)),
           ),
+
           const SizedBox(width: 12),
           VerticalDivider(thickness: 2, color: cs.outlineVariant),
-          Icon(Icons.person, size: AppIcon.large(context), color: cs.onSurface),
+          Icon(Icons.person, size: 50, color: cs.onSurface),
           const SizedBox(width: 10),
+
           SizedBox(
             height: 50,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('User', style: TextStyle(color: cs.onSurface)),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
                 Text(
-                  uid.isEmpty ? '@guest' : '@$uid',
-                  style: TextStyle(color: cs.primary),
+                  'Name',
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
+                if (user == null)
+                  Text('-', style: TextStyle(color: cs.onSurface))
+                else
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: _db.collection('users').doc(user.uid).snapshots(),
+                    builder: (context, snap) {
+                      if (!snap.hasData || !snap.data!.exists) {
+                        return Text('-', style: TextStyle(color: cs.onSurface));
+                      }
+                      final data = snap.data!.data() as Map<String, dynamic>;
+                      final name = (data['name'] ?? '-').toString();
+
+                      return Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
+                        ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -457,13 +483,13 @@ class _DepartmentPageState extends State<DepartmentPage> {
     bool isManager,
   ) {
     final w = MediaQuery.of(context).size.width;
+    final cs = Theme.of(context).colorScheme;
 
     int crossAxisCount = 3;
     if (w < 1200) crossAxisCount = 2;
     if (w < 700) crossAxisCount = 1;
 
     final double cardHeight = (w < 700) ? 180 : 170;
-    final cs = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -488,8 +514,8 @@ class _DepartmentPageState extends State<DepartmentPage> {
   }
 
   Widget _deptCard(BuildContext context, DepartmentItem d, bool isManager) {
-    final icon = _iconFromString(d.icon);
     final cs = Theme.of(context).colorScheme;
+    final icon = _iconFromString(d.icon);
 
     return InkWell(
       onTap: () {
@@ -507,13 +533,14 @@ class _DepartmentPageState extends State<DepartmentPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: cs.surface,
+          border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, size: AppIcon.medium(context)),
+                Icon(icon, size: AppIcon.medium(context), color: cs.onSurface),
                 const Spacer(),
                 if (isManager)
                   PopupMenuButton<String>(
@@ -544,10 +571,14 @@ class _DepartmentPageState extends State<DepartmentPage> {
               d.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: AppText.body(context)),
+              style: TextStyle(
+                fontSize: AppText.body(context),
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 6),
-            const Divider(thickness: 2),
+            Divider(thickness: 2, color: cs.outlineVariant.withOpacity(0.5)),
             Expanded(
               child: Align(
                 alignment: Alignment.bottomLeft,
@@ -556,8 +587,9 @@ class _DepartmentPageState extends State<DepartmentPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.blue,
+                    color: cs.primary,
                     fontSize: AppText.body(context),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -576,45 +608,42 @@ class _DepartmentPageState extends State<DepartmentPage> {
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: cs.surface,
+        color: cs.surfaceContainerHighest,
       ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              'All team leader of each department',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: AppText.title(context),
-                color: Colors.blue,
-              ),
+      child: Column(
+        children: [
+          Text(
+            'All team leader of each department',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: AppText.title(context),
+              color: cs.primary,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 20),
-            ...items.map((d) {
-              final icon = _iconFromString(d.icon);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: Row(
-                  children: [
-                    Icon(icon, size: AppIcon.small(context)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Team leader of ${d.name}: ${d.leaderName}',
-                        style: TextStyle(fontSize: AppText.body(context)),
+          ),
+          const SizedBox(height: 20),
+          ...items.map((d) {
+            final icon = _iconFromString(d.icon);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                children: [
+                  Icon(icon, size: AppIcon.small(context), color: cs.onSurface),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Team leader of ${d.name}: ${d.leaderName}',
+                      style: TextStyle(
+                        fontSize: AppText.body(context),
+                        color: cs.onSurface,
                       ),
                     ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -669,6 +698,7 @@ class DepartmentMembersPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: AppBar(title: Text('Members: $departmentName')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: db
@@ -687,13 +717,15 @@ class DepartmentMembersPage extends StatelessWidget {
                 'No users in $departmentName yet.\n'
                 'Make sure users.department == "$departmentName"',
                 textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurface),
               ),
             );
           }
 
           return ListView.separated(
             itemCount: users.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: cs.outlineVariant.withOpacity(0.5)),
             itemBuilder: (context, i) {
               final u = users[i].data();
               final name = (u['name'] ?? 'Unknown').toString();
@@ -701,10 +733,14 @@ class DepartmentMembersPage extends StatelessWidget {
               final email = (u['email'] ?? '').toString();
 
               return ListTile(
-                leading: CircleAvatar(child: Icon(icon)),
-                title: Text(name),
+                leading: CircleAvatar(
+                  backgroundColor: cs.surfaceContainerHighest,
+                  child: Icon(icon, color: cs.onSurface),
+                ),
+                title: Text(name, style: TextStyle(color: cs.onSurface)),
                 subtitle: Text(
                   email.isEmpty ? 'Role: $role' : '$email • Role: $role',
+                  style: TextStyle(color: cs.onSurfaceVariant),
                 ),
               );
             },
