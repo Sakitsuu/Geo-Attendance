@@ -99,19 +99,27 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: cs.surface,
         body: Center(
           child: Text(
             'You must be logged in to view requests.',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
+      backgroundColor: cs.surface,
       body: Column(
         children: [
           Container(
@@ -120,28 +128,43 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
             height: 150,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: Colors.grey[300],
+              color: cs.surfaceContainerHighest,
             ),
             child: Row(
               children: [
-                const Text('Manage Requests', style: TextStyle(fontSize: 26)),
+                Text(
+                  'Manage Requests',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
                 const Spacer(),
-                DropdownButton<String>(
-                  value: filterStatus,
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(
-                      value: 'accepted',
-                      child: Text('Accepted'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'rejected',
-                      child: Text('Rejected'),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setState(() => filterStatus = v);
-                  },
+
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: filterStatus,
+                    dropdownColor: cs.surfaceContainerHighest,
+                    style: TextStyle(color: cs.onSurface),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'pending',
+                        child: Text('Pending'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'accepted',
+                        child: Text('Accepted'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'rejected',
+                        child: Text('Rejected'),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => filterStatus = v);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -159,8 +182,8 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                       child: Text(
                         'Firestore error:\n${snapshot.error}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.red,
+                        style: TextStyle(
+                          color: cs.error,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -173,7 +196,12 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No requests found'));
+                  return Center(
+                    child: Text(
+                      'No requests found',
+                      style: TextStyle(color: cs.onSurface),
+                    ),
+                  );
                 }
 
                 final docs = snapshot.data!.docs.toList()
@@ -189,7 +217,12 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                 }).toList();
 
                 if (filteredDocs.isEmpty) {
-                  return Center(child: Text('No $filterStatus requests'));
+                  return Center(
+                    child: Text(
+                      'No $filterStatus requests',
+                      style: TextStyle(color: cs.onSurface),
+                    ),
+                  );
                 }
 
                 return ListView.builder(
@@ -206,22 +239,30 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.outlineVariant),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '${type.toUpperCase()} REQUEST',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: cs.onSurface,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             '${_safeDate(data['fromDate'])} → ${_safeDate(data['toDate'])}',
+                            style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                           const SizedBox(height: 6),
-                          Text('Reason: $reason'),
+                          Text(
+                            'Reason: $reason',
+                            style: TextStyle(color: cs.onSurfaceVariant),
+                          ),
                           const SizedBox(height: 10),
 
                           if (filterStatus == 'pending')
@@ -230,6 +271,7 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
                                   ),
                                   onPressed: () =>
                                       _updateRequestStatus(doc, 'accepted'),
@@ -239,6 +281,7 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
                                   ),
                                   onPressed: () =>
                                       _updateRequestStatus(doc, 'rejected'),
@@ -248,7 +291,10 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                             )
                           else
                             Chip(
-                              label: Text(filterStatus),
+                              label: Text(
+                                filterStatus,
+                                style: TextStyle(color: cs.onSurface),
+                              ),
                               backgroundColor: filterStatus == 'accepted'
                                   ? Colors.green.shade100
                                   : Colors.red.shade100,
