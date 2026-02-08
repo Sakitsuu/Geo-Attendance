@@ -17,15 +17,9 @@ class ManagerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Geo Attendant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        fontFamily: 'MomoTrustDisplay',
-      ),
-      home: const MyHomePage(title: 'Geo Attendant'),
-    );
+    // ✅ IMPORTANT: no MaterialApp here
+    // Your app's only MaterialApp should be in main.dart (AnimatedBuilder themeController)
+    return const MyHomePage(title: 'Geo Attendant');
   }
 }
 
@@ -54,270 +48,180 @@ class _MyHomePageState extends State<MyHomePage> {
   ];
 
   final List<Widget> pages = [
-    NotificationSite(),
-    GetAttendance(),
-    DashboardSite(),
-    GraphicSite(),
-    ManagerRequestsPage(),
-    DepartmentSite(),
-    ListWorkerSite(),
-    SchedulesSite(),
-    SettingSite(),
-    privacy.SecuritySite(),
+    const NotificationSite(),
+    const GetAttendance(),
+    const DashboardSite(),
+    const GraphicSite(),
+    const ManagerRequestsPage(),
+    const DepartmentSite(),
+    const ListWorkerSite(),
+    const SchedulesSite(),
+    const SettingSite(),
+    const privacy.SecuritySite(),
   ];
 
   void select(int index) {
     setState(() {
       selectedIndex = index;
-      isSelected = [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ];
+      isSelected = List<bool>.filled(10, false);
       isSelected[index] = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       body: Row(
         children: <Widget>[
-          Expanded(
-            child: SingleChildScrollView(
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    flex: 1,
-                    child: SizedBox(
-                      width: 50,
-                      child: Column(
-                        spacing: 275,
-                        children: <Widget>[
-                          SizedBox(
-                            child: Column(
-                              children: <Widget>[
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedIndex = 0;
-                                      select(0);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[0]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.notifications),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedIndex = 1;
-                                      select(1);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[1]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.check),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(
-                            child: Column(
-                              children: <Widget>[
-                                TextButton(
-                                  onPressed: () {
-                                    // Dachboard Site
-                                    setState(() {
-                                      selectedIndex = 2;
-                                      select(2);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[2]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: const Icon(Icons.add_box_outlined),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    // Graphic Site
-                                    setState(() {
-                                      selectedIndex = 3;
-                                      select(3);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[3]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: const Icon(Icons.auto_graph),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    // Profile Site
-                                    setState(() {
-                                      selectedIndex = 4;
-                                      select(4);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[4]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.person),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    // Department Site
-                                    setState(() {
-                                      selectedIndex = 5;
-                                      select(5);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[5]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.schema_outlined),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    // List Worker Site
-                                    setState(() {
-                                      selectedIndex = 6;
-                                      select(6);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[6]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.grading_sharp),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedIndex = 7;
-                                      select(7);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[7]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.date_range),
-                                ),
-                                Divider(thickness: 2),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedIndex = 8;
-                                      select(8);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[8]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.settings),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedIndex = 9;
-                                      select(9);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    backgroundColor: isSelected[9]
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                  ),
-                                  child: Icon(Icons.shield),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(
-                            child: Column(
-                              children: <Widget>[
-                                Divider(thickness: 2),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => LoginPage(),
-                                      ),
-                                    );
-                                  },
-                                  child: Icon(Icons.logout),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+          // ============ LEFT SIDEBAR ============
+          SizedBox(
+            width: 70,
+            child: Container(
+              color: cs.surface,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top icons
+                  Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[0],
+                        icon: Icons.notifications,
+                        onTap: () => select(0),
                       ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[1],
+                        icon: Icons.check,
+                        onTap: () => select(1),
+                      ),
+                      const SizedBox(height: 14),
+                      Divider(thickness: 2, color: cs.outlineVariant),
+                      const SizedBox(height: 6),
+
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[2],
+                        icon: Icons.add_box_outlined,
+                        onTap: () => select(2),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[3],
+                        icon: Icons.auto_graph,
+                        onTap: () => select(3),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[4],
+                        icon: Icons.person,
+                        onTap: () => select(4),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[5],
+                        icon: Icons.schema_outlined,
+                        onTap: () => select(5),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[6],
+                        icon: Icons.grading_sharp,
+                        onTap: () => select(6),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[7],
+                        icon: Icons.date_range,
+                        onTap: () => select(7),
+                      ),
+
+                      const SizedBox(height: 10),
+                      Divider(thickness: 2, color: cs.outlineVariant),
+                      const SizedBox(height: 6),
+
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[8],
+                        icon: Icons.settings,
+                        onTap: () => select(8),
+                      ),
+                      _sideBtn(
+                        cs: cs,
+                        selected: isSelected[9],
+                        icon: Icons.shield,
+                        onTap: () => select(9),
+                      ),
+                    ],
+                  ),
+
+                  // Bottom logout
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      children: [
+                        Divider(thickness: 2, color: cs.outlineVariant),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            foregroundColor: cs.onSurfaceVariant,
+                          ),
+                          child: const Icon(Icons.logout),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          VerticalDivider(thickness: 2, color: Colors.grey),
-          Expanded(flex: 20, child: pages[selectedIndex]),
+
+          // Divider between sidebar and content
+          VerticalDivider(thickness: 2, width: 1, color: cs.outlineVariant),
+
+          // ============ PAGE CONTENT ============
+          Expanded(child: pages[selectedIndex]),
         ],
+      ),
+    );
+  }
+
+  Widget _sideBtn({
+    required ColorScheme cs,
+    required bool selected,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: selected ? cs.primaryContainer : Colors.transparent,
+          foregroundColor: selected
+              ? cs.onPrimaryContainer
+              : cs.onSurfaceVariant,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        ),
+        child: Icon(icon, size: 24),
       ),
     );
   }
