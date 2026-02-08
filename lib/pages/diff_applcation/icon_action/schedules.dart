@@ -11,12 +11,12 @@ class SchedulesSite extends StatefulWidget {
 }
 
 class _SchedulesSiteState extends State<SchedulesSite> {
-  final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
   DateTime currentMonth = DateTime.now();
 
-  void _previousMonth() {
+  void _prevMonth() {
     setState(() {
       currentMonth = DateTime(currentMonth.year, currentMonth.month - 1);
     });
@@ -28,222 +28,216 @@ class _SchedulesSiteState extends State<SchedulesSite> {
     });
   }
 
-  int daysInMonth(DateTime date) => DateTime(date.year, date.month + 1, 0).day;
+  int daysInMonth(DateTime d) => DateTime(d.year, d.month + 1, 0).day;
+  String dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+  String monthKey(DateTime d) => DateFormat('yyyy-MM').format(d);
+
+  Future<void> _addEvent(DateTime date) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final titleCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text("Add Event (${DateFormat('dd MMM yyyy').format(date)})"),
+        content: TextField(
+          controller: titleCtrl,
+          decoration: const InputDecoration(hintText: "Event title"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final title = titleCtrl.text.trim();
+              if (title.isEmpty) return;
+
+              final userDoc = await _db.collection('users').doc(user.uid).get();
+              final name = (userDoc.data()?['name'] ?? 'Unknown').toString();
+
+              await _db.collection('events').add({
+                "title": title,
+                "date": dateKey(date),
+                "createdBy": user.uid,
+                "createdByName": name,
+                "createdAt": FieldValue.serverTimestamp(),
+              });
+
+              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+
+    titleCtrl.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final mk = monthKey(currentMonth);
     final cs = Theme.of(context).colorScheme;
-
-    final totalDays = daysInMonth(currentMonth);
-    final firstWeekday = DateTime(
-      currentMonth.year,
-      currentMonth.month,
-      1,
-    ).weekday;
-
-    final now = DateTime.now();
-    final isTodayMonth =
-        now.month == currentMonth.month && now.year == currentMonth.year;
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: Padding(
-        padding: const EdgeInsets.all(16), // ✅ same as Graphic
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(8),
-              height: 166,
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Schedules',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-
-                  // Month badge (same style as Graphic date badge)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: cs.outlineVariant),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_month, size: 18, color: cs.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat('MMM yyyy').format(currentMonth),
-                          style: TextStyle(color: cs.primary),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  VerticalDivider(
-                    thickness: 2,
-                    width: 40, // ✅ same as Graphic
-                    color: cs.outlineVariant,
-                  ),
-
-                  // Name block EXACT same structure as Graphic
-                  const Icon(Icons.person, size: 50),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 50,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Text('Name'),
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: _db
-                              .collection('users')
-                              .doc(_auth.currentUser?.uid)
-                              .snapshots(),
-                          builder: (context, snap) {
-                            if (!snap.hasData || !snap.data!.exists) {
-                              return const Text('-');
-                            }
-                            final m = snap.data!.data() as Map<String, dynamic>;
-                            return Text((m['name'] ?? '-').toString());
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ================= CALENDAR CARD (match Graphic card look) =================
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(14), // ✅ same rounding
+      appBar: AppBar(
+        title: const Text("Schedules"),
+        backgroundColor: cs.surface,
+        foregroundColor: cs.onSurface,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: _prevMonth,
+                  icon: Icon(Icons.chevron_left, color: cs.onSurface),
                 ),
-                child: Column(
-                  children: [
-                    // Month navigation row (more compact)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          onPressed: _previousMonth,
-                          icon: Icon(Icons.chevron_left, color: cs.onSurface),
+                Text(
+                  DateFormat('MMMM yyyy').format(currentMonth),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _nextMonth,
+                  icon: Icon(Icons.chevron_right, color: cs.onSurface),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                .map(
+                  (d) => Expanded(
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
                         ),
-                        Text(
-                          DateFormat('MMMM yyyy').format(currentMonth),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _nextMonth,
-                          icon: Icon(Icons.chevron_right, color: cs.onSurface),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Weekdays
-                    Row(
-                      children:
-                          const [
-                                'Mon',
-                                'Tue',
-                                'Wed',
-                                'Thu',
-                                'Fri',
-                                'Sat',
-                                'Sun',
-                              ]
-                              .map(
-                                (d) => Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      d,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize:
-                                            12, // ✅ smaller like Graphic UI
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Days Grid (smaller + cleaner)
-                    Expanded(
-                      child: GridView.builder(
-                        itemCount: totalDays + firstWeekday - 1,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 7,
-                              mainAxisSpacing: 8,
-                              crossAxisSpacing: 8,
-                            ),
-                        itemBuilder: (context, index) {
-                          if (index < firstWeekday - 1) {
-                            return const SizedBox();
-                          }
-
-                          final day = index - firstWeekday + 2;
-                          final isToday = isTodayMonth && day == now.day;
-
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: isToday ? cs.primaryContainer : cs.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: cs.outlineVariant),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  fontSize: 13, // ✅ smaller day number
-                                  fontWeight: FontWeight.w700,
-                                  color: isToday
-                                      ? cs.onPrimaryContainer
-                                      : cs.onSurface,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                )
+                .toList(),
+          ),
+
+          const SizedBox(height: 8),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _db.collection('events').snapshots(),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Center(child: Text("Error: ${snap.error}"));
+                }
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final events = <String, String>{};
+
+                for (final doc in snap.data!.docs) {
+                  final data = doc.data();
+                  final date = (data['date'] ?? '').toString();
+                  if (date.startsWith('$mk-')) {
+                    events[date] = (data['title'] ?? '').toString();
+                  }
+                }
+
+                final totalDays = daysInMonth(currentMonth);
+                final firstWeekday = DateTime(
+                  currentMonth.year,
+                  currentMonth.month,
+                  1,
+                ).weekday;
+
+                final now = DateTime.now();
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: totalDays + firstWeekday - 1,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                  ),
+                  itemBuilder: (context, index) {
+                    if (index < firstWeekday - 1) return const SizedBox();
+
+                    final day = index - firstWeekday + 2;
+                    final date = DateTime(
+                      currentMonth.year,
+                      currentMonth.month,
+                      day,
+                    );
+                    final key = dateKey(date);
+
+                    final hasEvent = events.containsKey(key);
+                    final isToday =
+                        now.year == date.year &&
+                        now.month == date.month &&
+                        now.day == date.day;
+
+                    final bg = isToday ? cs.primary : cs.surface;
+                    final border = isToday ? cs.primary : cs.outlineVariant;
+                    final textColor = isToday ? cs.onPrimary : cs.onSurface;
+
+                    return InkWell(
+                      onTap: () => _addEvent(date),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: border,
+                            width: isToday ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "$day",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (hasEvent)
+                              Text(
+                                events[key]!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: textColor,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

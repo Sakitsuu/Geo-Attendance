@@ -40,11 +40,10 @@ class _EditProfilePageState extends State<EditProfilePage>
     super.dispose();
   }
 
-  // ✅ auto refresh when user returns from Gmail / browser back to app
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _refreshUser(); // auto refresh
+      _refreshUser();
     }
   }
 
@@ -71,21 +70,17 @@ class _EditProfilePageState extends State<EditProfilePage>
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // update UI email field
       if (mounted) {
         setState(() {
           emailCtrl.text = user.email ?? '';
         });
       }
 
-      // keep Firestore in sync
       await _db.collection('users').doc(uid).set({
         'email': user.email ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (_) {
-      // ignore silently (no spam snackbars on resume)
-    }
+    } catch (_) {}
   }
 
   Future<void> _save() async {
@@ -98,17 +93,12 @@ class _EditProfilePageState extends State<EditProfilePage>
       final newName = nameCtrl.text.trim();
       final newEmail = emailCtrl.text.trim();
 
-      // ✅ save name immediately (Firestore)
       await _db.collection('users').doc(uid).set({
         'name': newName,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      // ✅ request secure email update (Firebase Auth)
       if (newEmail != (user.email ?? '')) {
         await user.verifyBeforeUpdateEmail(newEmail);
-
-        // optional: store "pendingEmail" so you can show status later
         await _db.collection('users').doc(uid).set({
           'pendingEmail': newEmail,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -122,8 +112,6 @@ class _EditProfilePageState extends State<EditProfilePage>
             ),
           ),
         );
-
-        // don't pop page yet (email not updated until verified)
         return;
       }
 

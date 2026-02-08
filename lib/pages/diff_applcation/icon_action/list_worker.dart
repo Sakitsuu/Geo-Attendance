@@ -115,7 +115,6 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                 ],
               ),
             ),
-            // This is ma table Card guys
             const SizedBox(height: 20),
             SizedBox(
               height: 800,
@@ -125,13 +124,13 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                   margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: cs.surfaceContainerHighest, // ✅ was grey[300]
+                    color: cs.surfaceContainerHighest,
                   ),
                   child: Column(
                     children: <Widget>[
                       DefaultTextStyle(
                         style: TextStyle(
-                          color: cs.onSurface, // ✅ make headers readable
+                          color: cs.onSurface,
                           fontWeight: FontWeight.w700,
                         ),
                         child: const Row(
@@ -147,7 +146,7 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                         ),
                       ),
 
-                      Divider(thickness: 2, color: cs.outlineVariant), // ✅
+                      Divider(thickness: 2, color: cs.outlineVariant),
 
                       Expanded(
                         child: StreamBuilder<QuerySnapshot>(
@@ -202,9 +201,7 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                                     ),
                                   ),
                                   child: DefaultTextStyle(
-                                    style: TextStyle(
-                                      color: cs.onSurface,
-                                    ), // ✅ row text
+                                    style: TextStyle(color: cs.onSurface),
                                     child: Row(
                                       children: <Widget>[
                                         Expanded(

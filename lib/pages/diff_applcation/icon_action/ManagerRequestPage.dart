@@ -10,9 +10,8 @@ class ManagerRequestsPage extends StatefulWidget {
 }
 
 class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
-  String filterStatus = 'pending'; // pending | accepted | rejected
+  String filterStatus = 'pending';
 
-  // ✅ WEB-SAFE stream wrapper
   Stream<QuerySnapshot> _requestsStreamSafe() async* {
     try {
       yield* FirebaseFirestore.instance.collection('requests').snapshots();
@@ -63,7 +62,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
         return;
       }
 
-      // 1) Update request
       await FirebaseFirestore.instance
           .collection('requests')
           .doc(doc.id)
@@ -73,7 +71,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
             'reviewedAt': FieldValue.serverTimestamp(),
           });
 
-      // 2) Send notification to worker
       await FirebaseFirestore.instance
           .collection('users')
           .doc(workerUid.toString())
@@ -102,7 +99,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ VERY IMPORTANT on Web: do NOT touch Firestore if not logged in
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Scaffold(
@@ -118,7 +114,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
     return Scaffold(
       body: Column(
         children: [
-          // HEADER (kept similar to your style)
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.all(8),
@@ -158,7 +153,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
               stream: _requestsStreamSafe(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  // ✅ now you can see real error instead of red screen
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -182,7 +176,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                   return const Center(child: Text('No requests found'));
                 }
 
-                // ✅ sort in Dart (no orderBy required)
                 final docs = snapshot.data!.docs.toList()
                   ..sort((a, b) {
                     final ad = (a.data() as Map)['createdAt'];
@@ -190,7 +183,6 @@ class _ManagerRequestsPageState extends State<ManagerRequestsPage> {
                     return _safeCreatedAt(bd).compareTo(_safeCreatedAt(ad));
                   });
 
-                // ✅ filter in Dart (no where required)
                 final filteredDocs = docs.where((d) {
                   final data = d.data() as Map<String, dynamic>;
                   return (data['status'] ?? 'pending') == filterStatus;

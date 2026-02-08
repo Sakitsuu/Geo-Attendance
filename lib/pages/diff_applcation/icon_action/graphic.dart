@@ -3,10 +3,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// void main() {
-//   runApp(const GraphicSite());
-// }
-
 class GraphicSite extends StatelessWidget {
   const GraphicSite({super.key});
   @override
@@ -63,7 +59,6 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
   }
 
   Future<void> _pickMonth() async {
-    // Use date picker, but we only take Year + Month
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedMonth,
@@ -81,7 +76,7 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final startKey = _dateKey(_selectedMonth); // yyyy-MM-01
+    final startKey = _dateKey(_selectedMonth);
     final endKey = _dateKey(
       _nextMonth(_selectedMonth),
     ); // next month yyyy-MM-01
@@ -92,7 +87,6 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
         child: Center(
           child: Column(
             children: <Widget>[
-              // ================= HEADER =================
               Container(
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.all(8),
@@ -194,13 +188,6 @@ class _GraphicHomePageState extends State<GraphicHomePage> {
   }
 }
 
-/* =========================================================
-   LINE CHART (MONTHLY)
-   Daily attendance % for the selected month
-   % = attendanceDocsThatDay / totalUsers * 100
-   Queries attendance by date range:
-     date >= startKey and date < endKey
-   ========================================================= */
 class LineChartMonthly extends StatelessWidget {
   const LineChartMonthly({
     super.key,
@@ -250,7 +237,6 @@ class LineChartMonthly extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Count per day
                 final Map<int, int> countByDay = {
                   for (int i = 1; i <= daysInMonth; i++) i: 0,
                 };
@@ -260,7 +246,7 @@ class LineChartMonthly extends StatelessWidget {
                   final status = (m['status'] ?? '').toString();
                   if (status != 'PRESENT' && status != 'LATE') continue;
 
-                  final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
+                  final date = (m['date'] ?? '').toString();
                   if (date.length >= 10) {
                     final dayStr = date.substring(8, 10);
                     final day = int.tryParse(dayStr);
@@ -347,13 +333,6 @@ class LineChartMonthly extends StatelessWidget {
   }
 }
 
-/* =========================================================
-   BAR CHART (MONTHLY) by Department
-   % = (attendance docs in month for dept) / (usersInDept * daysInMonth) * 100
-   Requires:
-     - users.department
-     - attendance.department
-   ========================================================= */
 class BarChartMonthlyByDept extends StatelessWidget {
   const BarChartMonthlyByDept({
     super.key,
@@ -395,7 +374,6 @@ class BarChartMonthlyByDept extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // total users per dept
             final Map<String, int> totalByDept = {};
             for (final doc in userSnap.data!.docs) {
               final m = doc.data() as Map<String, dynamic>? ?? {};
@@ -404,7 +382,7 @@ class BarChartMonthlyByDept extends StatelessWidget {
             }
 
             final depts = totalByDept.keys.toList()..sort();
-            final shownDepts = depts.take(5).toList(); // keep chart clean
+            final shownDepts = depts.take(5).toList();
 
             return StreamBuilder<QuerySnapshot>(
               stream: db
@@ -436,7 +414,7 @@ class BarChartMonthlyByDept extends StatelessWidget {
                 for (int i = 0; i < shownDepts.length; i++) {
                   final dept = shownDepts[i];
                   final usersInDept = totalByDept[dept] ?? 0;
-                  final denom = usersInDept * daysInMonth; // month capacity
+                  final denom = usersInDept * daysInMonth;
                   final attended = attByDept[dept] ?? 0;
                   final percent = denom == 0 ? 0.0 : (attended / denom) * 100.0;
                   groups.add(_bar(i, percent));

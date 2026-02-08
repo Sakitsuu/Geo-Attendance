@@ -23,8 +23,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String get uid => _auth.currentUser!.uid;
+  static const bool attendanceDateIsTimestamp = false;
 
-  // ---------- helpers ----------
   String _dateKey(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
@@ -43,6 +43,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final y = next.year.toString().padLeft(4, '0');
     final m = next.month.toString().padLeft(2, '0');
     return "$y-$m-01";
+  }
+
+  String _fmtDate(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
   Future<Map<String, dynamic>?> _loadProfile() async {
@@ -65,12 +70,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return 'Time-off';
   }
 
-  String _fmtDate(DateTime? d) {
-    if (d == null) return '-';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
-  // ---------- request dialog ----------
   Future<void> _openRequestDialog(String type) async {
     DateTime? fromDate;
     DateTime? toDate;
@@ -137,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
               try {
                 await _db.collection('requests').add({
                   'uid': uid,
-                  'type': type, // 'time_off' or 'leave'
+                  'type': type,
                   'reason': reason,
                   'fromDate': Timestamp.fromDate(fromDate!),
                   'toDate': Timestamp.fromDate(toDate!),
@@ -227,31 +226,46 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- Monthly Rate (starts 100%, drops by rules) ----------
-  // Rules (edit if you want):
-  // - LATE: -2
-  // - ACCEPTED time_off/leave day: -1
-  // - ABSENT day (no attendance AND not off): -5
   Widget _monthlyRateWidget() {
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthNext = DateTime(now.year, now.month + 1, 1);
+    final monthStartDate = DateTime(now.year, now.month, 1);
+    final monthNextDate = DateTime(now.year, now.month + 1, 1);
+    final monthStart = monthStartDate;
+    final monthNext = monthNextDate;
 
-    final startKey = _monthStartKey(now);
-    final endKey = _nextMonthKey(now);
+    Stream<QuerySnapshot> attendanceStream;
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: _db
+    if (attendanceDateIsTimestamp) {
+      final startTs = Timestamp.fromDate(monthStartDate);
+      final endTs = Timestamp.fromDate(monthNextDate);
+
+      attendanceStream = _db
+          .collection('attendance')
+          .where('workerId', isEqualTo: uid)
+          .where('date', isGreaterThanOrEqualTo: startTs)
+          .where('date', isLessThan: endTs)
+          .orderBy('date')
+          .snapshots();
+    } else {
+      final startKey = _monthStartKey(now);
+      final endKey = _nextMonthKey(now);
+
+      attendanceStream = _db
           .collection('attendance')
           .where('workerId', isEqualTo: uid)
           .where('date', isGreaterThanOrEqualTo: startKey)
           .where('date', isLessThan: endKey)
-          .snapshots(),
+          .orderBy('date')
+          .snapshots();
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: attendanceStream,
       builder: (context, attSnap) {
         if (attSnap.hasError) {
-          return const Text(
-            'Err',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          return Text(
+            'Error: ${attSnap.error}',
+            style: const TextStyle(fontSize: 12),
           );
         }
         if (attSnap.connectionState == ConnectionState.waiting) {
@@ -262,19 +276,31 @@ class _ProfilePageState extends State<ProfilePage> {
         }
 
         final Map<String, String> statusByDate = {};
+
         for (final doc in attSnap.data?.docs ?? []) {
           final m = doc.data() as Map<String, dynamic>;
-          final date = (m['date'] ?? '').toString(); // yyyy-MM-dd
-          final status = (m['status'] ?? '').toString(); // PRESENT / LATE
-          if (date.isEmpty) continue;
 
-          // keep worst (LATE worse than PRESENT)
-          final existing = statusByDate[date];
+          String dateKey = '';
+
+          if (attendanceDateIsTimestamp) {
+            final ts = m['date'];
+            if (ts is Timestamp) {
+              final d = ts.toDate();
+              dateKey = _dateKey(DateTime(d.year, d.month, d.day));
+            }
+          } else {
+            dateKey = (m['date'] ?? '').toString();
+          }
+
+          final status = (m['status'] ?? '').toString();
+          if (dateKey.isEmpty) continue;
+
+          final existing = statusByDate[dateKey];
           if (existing == null) {
-            statusByDate[date] = status;
+            statusByDate[dateKey] = status;
           } else {
             if (existing != 'LATE' && status == 'LATE') {
-              statusByDate[date] = 'LATE';
+              statusByDate[dateKey] = 'LATE';
             }
           }
         }
@@ -287,9 +313,9 @@ class _ProfilePageState extends State<ProfilePage> {
               .snapshots(),
           builder: (context, reqSnap) {
             if (reqSnap.hasError) {
-              return const Text(
-                'Err',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              return Text(
+                'Error: ${reqSnap.error}',
+                style: const TextStyle(fontSize: 12),
               );
             }
             if (reqSnap.connectionState == ConnectionState.waiting) {
@@ -312,7 +338,6 @@ class _ProfilePageState extends State<ProfilePage> {
               from = DateTime(from.year, from.month, from.day);
               to = DateTime(to.year, to.month, to.day);
 
-              // clamp to this month
               if (to.isBefore(monthStart) || from.isAfter(monthNext)) continue;
 
               final start = from.isBefore(monthStart) ? monthStart : from;
@@ -340,7 +365,7 @@ class _ProfilePageState extends State<ProfilePage> {
               final d = DateTime(now.year, now.month, day);
               final key = _dateKey(d);
 
-              final st = statusByDate[key]; // PRESENT / LATE / null
+              final st = statusByDate[key];
               final isOff = offDays.contains(key);
 
               if (st == 'LATE') {
@@ -353,15 +378,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 score -= 1;
               }
 
-              // absent: no attendance doc and not off
               if (st == null && !isOff) {
                 absentDays++;
                 score -= 5;
               }
             }
 
-            if (score < 0) score = 0;
-            if (score > 100) score = 100;
+            score = score.clamp(0, 100);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,9 +409,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- Engagement Rate (example rule) ----------
-  // Here: start 100%, each request in this month reduces -5
-  // (change rule if you want)
   Widget _engagementRateWidget() {
     final now = DateTime.now();
     final monthStart = Timestamp.fromDate(DateTime(now.year, now.month, 1));
@@ -400,12 +420,13 @@ class _ProfilePageState extends State<ProfilePage> {
           .where('uid', isEqualTo: uid)
           .where('createdAt', isGreaterThanOrEqualTo: monthStart)
           .where('createdAt', isLessThan: monthNext)
+          .orderBy('createdAt')
           .snapshots(),
       builder: (context, snap) {
         if (snap.hasError) {
-          return const Text(
-            'Err',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          return Text(
+            'Error: ${snap.error}',
+            style: const TextStyle(fontSize: 12),
           );
         }
         if (snap.connectionState == ConnectionState.waiting) {
@@ -416,10 +437,8 @@ class _ProfilePageState extends State<ProfilePage> {
         }
 
         final count = snap.data?.docs.length ?? 0;
-
         int score = 100 - (count * 5);
-        if (score < 0) score = 0;
-        if (score > 100) score = 100;
+        score = score.clamp(0, 100);
 
         return Text(
           '$score%',
@@ -429,12 +448,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // IMPORTANT: avoid crash if user is not logged in
     if (_auth.currentUser == null) {
       return const Scaffold(
         body: Center(
@@ -473,7 +490,6 @@ class _ProfilePageState extends State<ProfilePage> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // HEADER
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),
@@ -516,13 +532,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
-
-                // STATS
                 Row(
                   children: [
                     _statCard(
                       cs: cs,
-                      title: 'Monthly Rate',
+                      title: 'Attendance Rate',
                       icon: Icons.alarm,
                       value: _monthlyRateWidget(),
                     ),
@@ -534,8 +548,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-
-                // REQUESTS
                 Container(
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.all(8),
@@ -575,7 +587,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-
                       StreamBuilder<QuerySnapshot>(
                         stream: _pendingRequestsStream(),
                         builder: (context, snap) {

@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// ❌ Remove this main() when dashboard is inside your app.
-// void main() => runApp(const DashboardSite());
-
 class DashboardSite extends StatelessWidget {
   const DashboardSite({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: No MaterialApp here (use the app's global MaterialApp)
     return const MyHomePage(title: 'Geo Attendant');
   }
 }
@@ -95,14 +91,13 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Center(
           child: Column(
             children: <Widget>[
-              // ================= HEADER =================
               Container(
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.all(8),
                 height: 166,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: cs.surfaceContainerHighest, // ✅ was grey[300]
+                  color: cs.surfaceContainerHighest,
                 ),
                 child: Row(
                   children: <Widget>[
@@ -155,10 +150,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
               const SizedBox(height: 75),
 
-              // ================= MAIN ROW =================
               Row(
                 children: <Widget>[
-                  // ============ LEFT BIG CARD ============
                   Expanded(
                     flex: 2,
                     child: Container(
@@ -167,7 +160,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       height: 547,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: cs.surfaceContainerHighest, // ✅
+                        color: cs.surfaceContainerHighest,
                       ),
                       child: Column(
                         children: <Widget>[
@@ -176,7 +169,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               Icon(
                                 Icons.sunny,
                                 size: AppIcon.huge(context),
-                                color: cs.onSurfaceVariant, // ✅ was grey[500]
+                                color: cs.onSurfaceVariant,
                               ),
                               const SizedBox(width: 10),
                               Flexible(
@@ -228,7 +221,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  // ============ COLUMN 1 ============
                   Expanded(
                     child: Column(
                       children: <Widget>[
@@ -266,7 +258,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  // ============ COLUMN 2 ============
                   Expanded(
                     child: Column(
                       children: <Widget>[
@@ -318,7 +309,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  // ============ COLUMN 3 ============
                   Expanded(
                     child: Column(
                       children: <Widget>[
@@ -409,7 +399,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // ===================== STAT CARD WIDGET =====================
   Widget _statCard(
     BuildContext context, {
     required ColorScheme cs,
@@ -423,7 +412,7 @@ class _MyHomePageState extends State<MyHomePage> {
       height: 200,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: cs.surfaceContainerHighest, // ✅ was grey[300]
+        color: cs.surfaceContainerHighest,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,11 +427,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: cs.surfaceContainer, // ✅ was grey[100]
+                    color: cs.surfaceContainer,
                   ),
                   child: Icon(
                     icon,
-                    color: cs.primary, // ✅ was Colors.blue
+                    color: cs.primary,
                     size: AppIcon.medium(context),
                   ),
                 ),

@@ -96,7 +96,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -110,8 +109,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
             ),
           ),
-
-          // Blobs
           Positioned(
             left: -60,
             top: 120,
@@ -128,7 +125,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: _blob(180, Colors.white.withOpacity(0.10)),
           ),
 
-          // Glass card
           Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isMobile ? 360 : 420),

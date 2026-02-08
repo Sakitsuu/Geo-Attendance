@@ -31,7 +31,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // ✅ 1) Firebase login
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
@@ -39,9 +38,6 @@ class _LoginPageState extends State<LoginPage> {
 
       final uid = cred.user?.uid;
       if (uid == null) throw Exception('No user after login');
-
-      // ✅ 2) Read user profile from Firestore (database)
-      // You saved role when sign up: users/{uid} { role: 'worker' }
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -52,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      // ✅ 3) Navigate by role
+      // Navigate by role
       if (role == 'manager') {
         Navigator.pushReplacement(
           context,
@@ -112,7 +108,6 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -126,8 +121,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-
-          // Soft blobs
           Positioned(
             left: -60,
             top: 120,
@@ -143,8 +136,6 @@ class _LoginPageState extends State<LoginPage> {
             bottom: 140,
             child: _blob(180, Colors.white.withOpacity(0.10)),
           ),
-
-          // Center glass card
           Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isMobile ? 360 : 420),
@@ -199,7 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                         keyboardType: TextInputType.text,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) {
-                          if (!isLoading) _login(); // ✅ Enter login
+                          if (!isLoading) _login();
                         },
                         suffix: IconButton(
                           onPressed: () =>
@@ -284,7 +275,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 18),
 
-                      // ✅ Register link
+                      // Register link
                       RichText(
                         text: TextSpan(
                           style: TextStyle(

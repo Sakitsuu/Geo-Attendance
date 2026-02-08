@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class DepartmentSite extends StatelessWidget {
   const DepartmentSite({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ✅ IMPORTANT: no MaterialApp here (use global theme from main.dart)
     return const DepartmentPage();
   }
 }
@@ -24,6 +23,39 @@ class AppText {
   }
 }
 
+class AppIcon {
+  static double large(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.06).clamp(36.0, 80.0);
+  }
+
+  static double medium(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.045).clamp(28.0, 60.0);
+  }
+
+  static double small(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return (w * 0.035).clamp(24.0, 48.0);
+  }
+}
+
+class DepartmentItem {
+  final String id;
+  final String name;
+  final int totalEmployees;
+  final String leaderName;
+  final String icon;
+
+  const DepartmentItem({
+    required this.id,
+    required this.name,
+    required this.totalEmployees,
+    required this.leaderName,
+    required this.icon,
+  });
+}
+
 class DepartmentPage extends StatefulWidget {
   const DepartmentPage({super.key});
 
@@ -32,149 +64,61 @@ class DepartmentPage extends StatefulWidget {
 }
 
 class _DepartmentPageState extends State<DepartmentPage> {
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  CollectionReference<Map<String, dynamic>> get _deptRef =>
-      _db.collection('departments');
+  String get uid => _auth.currentUser?.uid ?? '';
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _deptStream() {
-    return _deptRef.orderBy('name').snapshots();
+  Stream<String> _roleStream() {
+    if (uid.isEmpty) return Stream.value('guest');
+    return _db.collection('users').doc(uid).snapshots().map((doc) {
+      final role = (doc.data()?['role'] ?? 'staff').toString();
+      return role.toLowerCase();
+    });
   }
 
-  Future<void> _openAddDialog() async {
-    final nameCtrl = TextEditingController();
-    final codeCtrl = TextEditingController();
-    bool active = true;
-    bool saving = false;
-
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-
-        return StatefulBuilder(
-          builder: (ctx, setLocal) {
-            Future<void> save() async {
-              final name = nameCtrl.text.trim();
-              final code = codeCtrl.text.trim();
-
-              if (name.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Department name is required')),
-                );
-                return;
-              }
-
-              setLocal(() => saving = true);
-              try {
-                await _deptRef.add({
-                  'name': name,
-                  'code': code.isEmpty
-                      ? name.toUpperCase()
-                      : code.toUpperCase(),
-                  'active': active,
-                  'createdAt': FieldValue.serverTimestamp(),
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
-
-                if (!mounted) return;
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Department added ✅')),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Add failed: $e')));
-              } finally {
-                setLocal(() => saving = false);
-              }
-            }
-
-            return AlertDialog(
-              backgroundColor: cs.surface,
-              title: Text(
-                'Add Department',
-                style: TextStyle(color: cs.onSurface),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Department Name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: codeCtrl,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Department Code (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) {
-                      if (!saving) save();
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    value: active,
-                    onChanged: saving
-                        ? null
-                        : (v) => setLocal(() => active = v),
-                    title: const Text('Active'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: saving ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: saving ? null : save,
-                  child: saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+  IconData _iconFromString(String icon) {
+    switch (icon) {
+      case 'bar_chart':
+        return Icons.bar_chart_rounded;
+      case 'computer':
+        return Icons.computer;
+      case 'finance':
+        return Icons.monetization_on_outlined;
+      case 'legal':
+        return Icons.gavel;
+      case 'api':
+        return Icons.api;
+      case 'group':
+        return Icons.group;
+      default:
+        return Icons.business;
+    }
   }
 
-  Future<void> _openEditDialog(String docId, Map<String, dynamic> data) async {
+  Future<void> _openDeptDialog({
+    String? docId,
+    Map<String, dynamic>? existing,
+  }) async {
     final nameCtrl = TextEditingController(
-      text: (data['name'] ?? '').toString(),
+      text: (existing?['name'] ?? '').toString(),
     );
-    final codeCtrl = TextEditingController(
-      text: (data['code'] ?? '').toString(),
+    final leaderCtrl = TextEditingController(
+      text: (existing?['leaderName'] ?? '').toString(),
     );
-    bool active = (data['active'] ?? true) == true;
+    String selectedIcon = (existing?['icon'] ?? 'group').toString();
+
     bool saving = false;
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-
         return StatefulBuilder(
           builder: (ctx, setLocal) {
             Future<void> save() async {
               final name = nameCtrl.text.trim();
-              final code = codeCtrl.text.trim();
+              final leader = leaderCtrl.text.trim();
 
               if (name.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -184,69 +128,81 @@ class _DepartmentPageState extends State<DepartmentPage> {
               }
 
               setLocal(() => saving = true);
-              try {
-                await _deptRef.doc(docId).update({
-                  'name': name,
-                  'code': code.isEmpty
-                      ? name.toUpperCase()
-                      : code.toUpperCase(),
-                  'active': active,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
 
-                if (!mounted) return;
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Department updated ✅')),
-                );
+              final payload = <String, dynamic>{
+                'name': name,
+                'leaderName': leader.isEmpty ? '-' : leader,
+                'icon': selectedIcon,
+                'updatedAt': FieldValue.serverTimestamp(),
+              };
+
+              try {
+                if (docId == null) {
+                  payload['createdAt'] = FieldValue.serverTimestamp();
+                  await _db.collection('departments').add(payload);
+                } else {
+                  await _db
+                      .collection('departments')
+                      .doc(docId)
+                      .update(payload);
+                }
+                if (mounted) Navigator.pop(ctx);
               } catch (e) {
-                if (!mounted) return;
+                setLocal(() => saving = false);
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
-              } finally {
-                setLocal(() => saving = false);
+                ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
               }
             }
 
             return AlertDialog(
-              backgroundColor: cs.surface,
-              title: Text(
-                'Edit Department',
-                style: TextStyle(color: cs.onSurface),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Department Name',
-                      border: OutlineInputBorder(),
+              title: Text(docId == null ? 'Add Department' : 'Edit Department'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Department name',
+                        hintText: 'e.g. IT',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: codeCtrl,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Department Code (optional)',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: leaderCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Team leader name (optional)',
+                        hintText: 'e.g. Mr. John De',
+                      ),
                     ),
-                    onSubmitted: (_) {
-                      if (!saving) save();
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    value: active,
-                    onChanged: saving
-                        ? null
-                        : (v) => setLocal(() => active = v),
-                    title: const Text('Active'),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedIcon,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'bar_chart',
+                          child: Text('bar_chart'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'computer',
+                          child: Text('computer'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'finance',
+                          child: Text('finance'),
+                        ),
+                        DropdownMenuItem(value: 'legal', child: Text('legal')),
+                        DropdownMenuItem(value: 'api', child: Text('api')),
+                        DropdownMenuItem(value: 'group', child: Text('group')),
+                      ],
+                      onChanged: (v) =>
+                          setLocal(() => selectedIcon = v ?? 'group'),
+                      decoration: const InputDecoration(labelText: 'Icon'),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -261,7 +217,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save'),
+                      : Text(docId == null ? 'Add' : 'Save'),
                 ),
               ],
             );
@@ -269,17 +225,37 @@ class _DepartmentPageState extends State<DepartmentPage> {
         );
       },
     );
+
+    nameCtrl.dispose();
+    leaderCtrl.dispose();
   }
 
-  Future<void> _deleteDepartment(String docId) async {
+  Future<void> _deleteDept(String docId, String name) async {
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete department?'),
+            content: Text('Delete "$name"? Users still keep users.department.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!ok) return;
+
     try {
-      await _deptRef.doc(docId).delete();
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Department deleted ✅')));
+      await _db.collection('departments').doc(docId).delete();
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
@@ -288,207 +264,452 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final w = MediaQuery.of(context).size.width;
+    final bool isSmall = w < 1100;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // ================= HEADER (same style as Graphic) =================
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(8),
-              height: 166,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: cs.surfaceContainerHighest,
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Department',
-                    style: TextStyle(
-                      fontSize: AppText.title(context),
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  VerticalDivider(thickness: 2, color: cs.outlineVariant),
-                  Icon(Icons.person, size: 50, color: cs.onSurface),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 50,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text('Name', style: TextStyle(color: cs.onSurface)),
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: _db
-                              .collection('users')
-                              .doc(_auth.currentUser?.uid)
-                              .snapshots(),
-                          builder: (context, snap) {
-                            if (!snap.hasData || !snap.data!.exists) {
-                              return Text(
-                                '-',
-                                style: TextStyle(color: cs.onSurfaceVariant),
+    return StreamBuilder<String>(
+      stream: _roleStream(),
+      builder: (context, roleSnap) {
+        final role = (roleSnap.data ?? 'staff').toLowerCase();
+        final bool isManager = role == 'manager';
+
+        return Scaffold(
+          floatingActionButton: isManager
+              ? FloatingActionButton(
+                  onPressed: () => _openDeptDialog(),
+                  child: const Icon(Icons.add),
+                )
+              : null,
+          body: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1400),
+                child: Column(
+                  children: [
+                    _header(context, role),
+                    const SizedBox(height: 16),
+
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _db
+                          .collection('departments')
+                          .orderBy('name')
+                          .snapshots(),
+                      builder: (context, deptSnap) {
+                        if (deptSnap.hasError)
+                          return _errorBox('Error: ${deptSnap.error}');
+                        if (!deptSnap.hasData) {
+                          return const Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        return StreamBuilder<
+                          QuerySnapshot<Map<String, dynamic>>
+                        >(
+                          stream: _db.collection('users').snapshots(),
+                          builder: (context, userSnap) {
+                            if (userSnap.hasError)
+                              return _errorBox('Error: ${userSnap.error}');
+                            if (!userSnap.hasData) {
+                              return const Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: CircularProgressIndicator(),
                               );
                             }
-                            final m = snap.data!.data() as Map<String, dynamic>;
-                            return Text(
-                              (m['name'] ?? '-').toString(),
-                              style: TextStyle(color: cs.onSurfaceVariant),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 16),
+                            final deptDocs = deptSnap.data!.docs;
+                            final userDocs = userSnap.data!.docs;
 
-            // ================= CONTENT =================
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Text(
-                    'Department List',
-                    style: TextStyle(
-                      fontSize: AppText.body(context),
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _openAddDialog,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Department'),
-                  ),
-                ],
-              ),
-            ),
+                            if (deptDocs.isEmpty) {
+                              return _emptyBox(
+                                'No departments yet',
+                                isManager
+                                    ? 'Tap + to add a department (e.g. IT, Sale).'
+                                    : 'Ask manager to create departments.',
+                              );
+                            }
 
-            const SizedBox(height: 12),
+                            final Map<String, int> countsByDept = {};
+                            for (final u in userDocs) {
+                              final dep = (u.data()['department'] ?? '')
+                                  .toString()
+                                  .trim()
+                                  .toLowerCase();
+                              if (dep.isEmpty) continue;
+                              countsByDept[dep] = (countsByDept[dep] ?? 0) + 1;
+                            }
 
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cs.outlineVariant),
-                ),
-                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _deptStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Text(
-                        'Error: ${snapshot.error}',
-                        style: TextStyle(color: cs.onSurface),
-                      );
-                    }
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+                            final items = deptDocs.map((d) {
+                              final data = d.data();
+                              final depId = d.id;
+                              final depName = (data['name'] ?? depId)
+                                  .toString();
+                              final key = depName.trim().toLowerCase();
 
-                    final docs = snapshot.data!.docs;
-                    if (docs.isEmpty) {
-                      return Text(
-                        'No departments yet. Click "Add Department".',
-                        style: TextStyle(color: cs.onSurface),
-                      );
-                    }
+                              return DepartmentItem(
+                                id: depId,
+                                name: depName,
+                                totalEmployees: countsByDept[key] ?? 0,
+                                leaderName: (data['leaderName'] ?? '-')
+                                    .toString(),
+                                icon: (data['icon'] ?? 'group').toString(),
+                              );
+                            }).toList();
 
-                    return Column(
-                      children: docs.map((d) {
-                        final data = d.data();
-                        final name = (data['name'] ?? '').toString();
-                        final code = (data['code'] ?? '').toString();
-                        final active = (data['active'] ?? true) == true;
+                            if (isSmall) {
+                              return Column(
+                                children: [
+                                  _departmentGrid(context, items, isManager),
+                                  const SizedBox(height: 16),
+                                  _leadersBox(context, items),
+                                ],
+                              );
+                            }
 
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainer,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: cs.outlineVariant.withOpacity(0.6),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: TextStyle(
-                                        color: cs.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      code.isEmpty ? '-' : 'Code: $code',
-                                      style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(999),
-                                  color: active
-                                      ? Colors.green.shade100
-                                      : Colors.red.shade100,
-                                ),
-                                child: Text(
-                                  active ? 'Active' : 'Inactive',
-                                  style: TextStyle(
-                                    color: active
-                                        ? Colors.green.shade900
-                                        : Colors.red.shade900,
-                                    fontWeight: FontWeight.w700,
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: _departmentGrid(
+                                    context,
+                                    items,
+                                    isManager,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              IconButton(
-                                onPressed: () => _openEditDialog(d.id, data),
-                                icon: Icon(Icons.edit, color: cs.onSurface),
-                              ),
-                              IconButton(
-                                onPressed: () => _deleteDepartment(d.id),
-                                icon: Icon(Icons.delete, color: cs.error),
-                              ),
-                            ],
-                          ),
+                                Expanded(
+                                  flex: 1,
+                                  child: _leadersBox(context, items),
+                                ),
+                              ],
+                            );
+                          },
                         );
-                      }).toList(),
-                    );
-                  },
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _header(BuildContext context, String role) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(8),
+      height: 166,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: cs.surfaceContainerHighest,
+      ),
+      child: Row(
+        children: [
+          Text(
+            'Department',
+            style: TextStyle(
+              fontSize: AppText.title(context),
+              color: cs.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: cs.surface.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: cs.outlineVariant),
+            ),
+            child: Text('Role: $role', style: TextStyle(color: cs.onSurface)),
+          ),
+          const SizedBox(width: 12),
+          VerticalDivider(thickness: 2, color: cs.outlineVariant),
+          Icon(Icons.person, size: AppIcon.large(context), color: cs.onSurface),
+          const SizedBox(width: 10),
+          SizedBox(
+            height: 50,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('User', style: TextStyle(color: cs.onSurface)),
+                Text(
+                  uid.isEmpty ? '@guest' : '@$uid',
+                  style: TextStyle(color: cs.primary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _departmentGrid(
+    BuildContext context,
+    List<DepartmentItem> items,
+    bool isManager,
+  ) {
+    final w = MediaQuery.of(context).size.width;
+
+    int crossAxisCount = 3;
+    if (w < 1200) crossAxisCount = 2;
+    if (w < 700) crossAxisCount = 1;
+
+    final double cardHeight = (w < 700) ? 180 : 170;
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: cs.surfaceContainerHighest,
+      ),
+      child: GridView.builder(
+        itemCount: items.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: cardHeight,
+        ),
+        itemBuilder: (context, i) => _deptCard(context, items[i], isManager),
+      ),
+    );
+  }
+
+  Widget _deptCard(BuildContext context, DepartmentItem d, bool isManager) {
+    final icon = _iconFromString(d.icon);
+    final cs = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                DepartmentMembersPage(departmentName: d.name, icon: icon),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: cs.surface,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: AppIcon.medium(context)),
+                const Spacer(),
+                if (isManager)
+                  PopupMenuButton<String>(
+                    tooltip: 'Manage',
+                    onSelected: (v) {
+                      if (v == 'edit') {
+                        _openDeptDialog(
+                          docId: d.id,
+                          existing: {
+                            'name': d.name,
+                            'leaderName': d.leaderName,
+                            'icon': d.icon,
+                          },
+                        );
+                      } else if (v == 'delete') {
+                        _deleteDept(d.id, d.name);
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              d.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: AppText.body(context)),
+            ),
+            const SizedBox(height: 6),
+            const Divider(thickness: 2),
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  'Total Employees: ${d.totalEmployees}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: AppText.body(context),
+                  ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _leadersBox(BuildContext context, List<DepartmentItem> items) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: cs.surface,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              'All team leader of each department',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppText.title(context),
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ...items.map((d) {
+              final icon = _iconFromString(d.icon);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  children: [
+                    Icon(icon, size: AppIcon.small(context)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Team leader of ${d.name}: ${d.leaderName}',
+                        style: TextStyle(fontSize: AppText.body(context)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorBox(String msg) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red),
+      ),
+      child: Text(msg),
+    );
+  }
+
+  Widget _emptyBox(String title, String subtitle) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(subtitle),
+        ],
+      ),
+    );
+  }
+}
+
+class DepartmentMembersPage extends StatelessWidget {
+  final String departmentName;
+  final IconData icon;
+
+  const DepartmentMembersPage({
+    super.key,
+    required this.departmentName,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final db = FirebaseFirestore.instance;
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Members: $departmentName')),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: db
+            .collection('users')
+            .where('department', isEqualTo: departmentName)
+            .snapshots(),
+        builder: (context, snap) {
+          if (snap.hasError) return Center(child: Text('Error: ${snap.error}'));
+          if (!snap.hasData)
+            return const Center(child: CircularProgressIndicator());
+
+          final users = snap.data!.docs;
+          if (users.isEmpty) {
+            return Center(
+              child: Text(
+                'No users in $departmentName yet.\n'
+                'Make sure users.department == "$departmentName"',
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          return ListView.separated(
+            itemCount: users.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) {
+              final u = users[i].data();
+              final name = (u['name'] ?? 'Unknown').toString();
+              final role = (u['role'] ?? 'staff').toString();
+              final email = (u['email'] ?? '').toString();
+
+              return ListTile(
+                leading: CircleAvatar(child: Icon(icon)),
+                title: Text(name),
+                subtitle: Text(
+                  email.isEmpty ? 'Role: $role' : '$email • Role: $role',
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
