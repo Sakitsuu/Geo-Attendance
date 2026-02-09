@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
@@ -13,29 +14,46 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  // Focus
   final _idFocus = FocusNode();
   final _nameFocus = FocusNode();
-  final _deptFocus = FocusNode();
   final _phoneFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _passFocus = FocusNode();
   final _confirmFocus = FocusNode();
 
+  // Controllers
   final TextEditingController idController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController departmentController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController pwController = TextEditingController();
   final TextEditingController verifyPwController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
+  // Firebase
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Department
+  final List<String> departments = const [
+    'Administrator',
+    'Designer',
+    'Finance',
+    'GIC',
+    'GTR',
+    'IT',
+    'HR',
+    'Sale',
+    'Technician',
+  ];
+  String? selectedDepartment;
+
+  // UI state
   bool hidePw = true;
   bool hideConfirm = true;
   bool isLoading = false;
 
+  // Validation text
   String invalidID = '';
   String invalidName = '';
   String invalidDepartment = '';
@@ -49,7 +67,6 @@ class _SignUpPageState extends State<SignUpPage> {
   void dispose() {
     _idFocus.dispose();
     _nameFocus.dispose();
-    _deptFocus.dispose();
     _phoneFocus.dispose();
     _emailFocus.dispose();
     _passFocus.dispose();
@@ -57,7 +74,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
     idController.dispose();
     nameController.dispose();
-    departmentController.dispose();
     emailController.dispose();
     pwController.dispose();
     verifyPwController.dispose();
@@ -76,7 +92,6 @@ class _SignUpPageState extends State<SignUpPage> {
   void _validateAll() {
     final id = idController.text.trim();
     final name = nameController.text.trim();
-    final dept = departmentController.text.trim();
     final email = emailController.text.trim();
     final phone = phoneController.text.trim();
     final pw = pwController.text;
@@ -84,7 +99,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
     invalidID = id.isEmpty ? 'ID is required' : '';
     invalidName = name.isEmpty ? 'Name is required' : '';
-    invalidDepartment = dept.isEmpty ? 'Department is required' : '';
+    invalidDepartment = (selectedDepartment == null)
+        ? 'Please select department'
+        : '';
     invalidEmail = _isEmailValid(email) ? '' : 'Invalid email';
     invalidPhone = _isPhoneValid(phone) ? '' : 'Invalid phone number';
 
@@ -127,7 +144,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await _firestore.collection('users').doc(user.user!.uid).set({
         'id': idController.text.trim(),
         'name': nameController.text.trim(),
-        'department': departmentController.text.trim(),
+        'department': selectedDepartment,
         'phone': phoneController.text.trim(),
         'role': 'worker',
         'email': user.user!.email,
@@ -158,7 +175,6 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -173,7 +189,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
 
-          // Blobs
+          //
           Positioned(
             left: -70,
             top: 140,
@@ -189,6 +205,8 @@ class _SignUpPageState extends State<SignUpPage> {
             bottom: 120,
             child: _blob(200, Colors.white.withOpacity(0.10)),
           ),
+
+          // Card
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
@@ -262,27 +280,19 @@ class _SignUpPageState extends State<SignUpPage> {
                                 hint: 'Enter Name',
                                 focusNode: _nameFocus,
                                 textInputAction: TextInputAction.next,
-                                onSubmitted: (_) => FocusScope.of(
-                                  context,
-                                ).requestFocus(_deptFocus),
+                                onSubmitted: (_) =>
+                                    FocusScope.of(context).unfocus(),
                                 onChanged: (_) => setState(_validateAll),
                               ),
                             ),
+
                             _fieldBox(
                               width: double.infinity,
                               label: 'Department',
                               errorText: invalidDepartment,
-                              child: _input(
-                                controller: departmentController,
-                                hint: 'Enter Department',
-                                focusNode: _deptFocus,
-                                textInputAction: TextInputAction.next,
-                                onSubmitted: (_) => FocusScope.of(
-                                  context,
-                                ).requestFocus(_phoneFocus),
-                                onChanged: (_) => setState(_validateAll),
-                              ),
+                              child: _deptDropdown(),
                             ),
+
                             _fieldBox(
                               width: double.infinity,
                               label: 'Phone Number',
@@ -442,6 +452,40 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+  Widget _deptDropdown() {
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.center,
+      child: DropdownButtonFormField<String>(
+        value: selectedDepartment,
+        isExpanded: true,
+        decoration: const InputDecoration(border: InputBorder.none),
+        dropdownColor: Colors.white,
+        hint: const Text(
+          'Select department',
+          style: TextStyle(color: Colors.black38),
+        ),
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        items: departments
+            .map((dep) => DropdownMenuItem(value: dep, child: Text(dep)))
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            selectedDepartment = value;
+            _validateAll();
+          });
+
+          FocusScope.of(context).requestFocus(_phoneFocus);
+        },
+      ),
+    );
+  }
+
   static Widget _blob(double size, Color color) {
     return Container(
       width: size,
@@ -528,10 +572,11 @@ class _SignUpPageState extends State<SignUpPage> {
         onChanged: onChanged,
         style: const TextStyle(color: Colors.black, fontSize: 14),
         cursorColor: Colors.black,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           border: InputBorder.none,
-          hintStyle: TextStyle(color: Colors.black38),
-        ).copyWith(hintText: hint),
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.black38),
+        ),
       ),
     );
   }
@@ -540,10 +585,10 @@ class _SignUpPageState extends State<SignUpPage> {
     required TextEditingController controller,
     required bool hidden,
     required VoidCallback toggle,
-    required void Function(String) onChanged,
     FocusNode? focusNode,
     TextInputAction? textInputAction,
     void Function(String)? onSubmitted,
+    required void Function(String) onChanged,
   }) {
     return Container(
       height: 46,

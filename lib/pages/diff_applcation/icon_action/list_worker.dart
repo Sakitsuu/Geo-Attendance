@@ -71,7 +71,10 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final query = attendanceRef.where('date', isEqualTo: _dateKey);
+    // final query = attendanceRef.where('date', isEqualTo: _dateKey);
+    final query = attendanceRef
+        .where('date', isEqualTo: _dateKey)
+        .orderBy('checkIn', descending: false);
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -136,6 +139,7 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                         child: const Row(
                           children: <Widget>[
                             Expanded(flex: 1, child: Text('No.')),
+                            Expanded(flex: 2, child: Text('ID')),
                             Expanded(flex: 2, child: Text('Name')),
                             Expanded(flex: 3, child: Text('Department')),
                             Expanded(flex: 3, child: Text('Phone number')),
@@ -154,10 +158,7 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
                               return Center(
-                                child: Text(
-                                  'Error loading attendance',
-                                  style: TextStyle(color: cs.onSurface),
-                                ),
+                                child: Text('Error: ${snapshot.error}'),
                               );
                             }
                             if (snapshot.connectionState ==
@@ -207,6 +208,10 @@ class _ListWorkerSiteState extends State<ListWorkerSite> {
                                         Expanded(
                                           flex: 1,
                                           child: Text('${index + 1}'),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(_text(m['id'])),
                                         ),
                                         Expanded(
                                           flex: 2,

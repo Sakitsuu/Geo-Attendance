@@ -24,8 +24,8 @@ class _GetAttendanceState extends State<GetAttendance> {
 
   bool? isLocationAllowed;
 
-  final double officeLatitude = 11.5671548;
-  final double officeLongitude = 104.8958224;
+  final double officeLatitude = 11.562088;
+  final double officeLongitude = 104.878991;
   final double allowedDistanceInMeters = 50;
 
   final _db = FirebaseFirestore.instance;
@@ -38,6 +38,7 @@ class _GetAttendanceState extends State<GetAttendance> {
   String workerName = "";
   String department = "";
   String phone = "";
+  String employeeId = "";
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _GetAttendanceState extends State<GetAttendance> {
       final data = doc.data() ?? {};
 
       setState(() {
+        employeeId = (data['id'] ?? '').toString();
         workerName = (data['name'] ?? user.email ?? 'Unknown').toString();
         department = (data['department'] ?? '').toString();
         phone = (data['phone'] ?? '').toString();
@@ -109,6 +111,7 @@ class _GetAttendanceState extends State<GetAttendance> {
     if (!snap.exists) {
       await docRef.set({
         'workerId': workerId,
+        'id': employeeId,
         'name': workerName,
         'department': department,
         'phone': phone,
@@ -135,6 +138,7 @@ class _GetAttendanceState extends State<GetAttendance> {
     }
 
     await docRef.update({
+      // 'id': employeeId,
       'checkOut': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
