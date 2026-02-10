@@ -130,6 +130,17 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    // to prevent the duplicate iD
+    final isUnique = await _isEmployeeIdUnique(idController.text);
+    if (!isUnique) {
+      setState(() {
+        invalidID = 'This ID already exists. Please use another one.';
+        status = 'Duplicate ID detected.';
+      });
+      _idFocus.requestFocus();
+      return;
+    }
+
     setState(() {
       isLoading = true;
       status = 'Signing Up...';
@@ -168,6 +179,20 @@ class _SignUpPageState extends State<SignUpPage> {
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  Future<bool> _isEmployeeIdUnique(String employeeId) async {
+    final id = employeeId.trim();
+    if (id.isEmpty) return false;
+
+    final snap = await _firestore
+        .collection('users')
+        .where('id', isEqualTo: id)
+        .limit(1)
+        .get();
+
+    //
+    return snap.docs.isEmpty;
   }
 
   @override
