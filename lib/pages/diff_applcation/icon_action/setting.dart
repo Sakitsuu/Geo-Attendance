@@ -223,16 +223,6 @@ class _SettingPageState extends State<SettingPage> {
                           },
                         ),
                         Divider(height: 1, color: cs.outlineVariant),
-                        ListTile(
-                          leading: Icon(Icons.password, color: cs.primary),
-                          title: Text(
-                            'Change password',
-                            style: TextStyle(color: cs.onSurface),
-                          ),
-                          onTap: () {
-                            // TODO: Navigator.push(...ChangePasswordPage())
-                          },
-                        ),
                       ],
                     ),
                   ),

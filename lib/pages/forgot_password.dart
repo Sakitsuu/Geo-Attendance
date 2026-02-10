@@ -83,46 +83,41 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         errorMessage = msg;
       });
     } finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 700;
+    final cs = Theme.of(context).colorScheme;
+    // final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF0EA5E9)],
+    );
 
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1D4ED8),
-                  Color(0xFF2563EB),
-                  Color(0xFF0EA5E9),
-                ],
-              ),
-            ),
+          Container(decoration: BoxDecoration(gradient: bgGradient)),
+
+          Positioned(
+            left: -70,
+            top: 140,
+            child: _blob(170, Colors.white.withOpacity(0.18)),
           ),
           Positioned(
-            left: -60,
-            top: 120,
-            child: _blob(160, const Color(0xFF93C5FD).withOpacity(0.55)),
+            right: -90,
+            top: 50,
+            child: _blob(240, Colors.white.withOpacity(0.12)),
           ),
           Positioned(
-            right: -80,
-            top: 60,
-            child: _blob(220, Colors.white.withOpacity(0.15)),
-          ),
-          Positioned(
-            right: -40,
-            bottom: 140,
-            child: _blob(180, Colors.white.withOpacity(0.10)),
+            right: -60,
+            bottom: 120,
+            child: _blob(200, Colors.white.withOpacity(0.10)),
           ),
 
           Center(
@@ -138,12 +133,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Geo-Attendant',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: cs.onSurface,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -155,7 +150,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white.withOpacity(0.95),
+                            color: cs.onSurface,
                           ),
                         ),
                       ),
@@ -166,7 +161,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         child: Text(
                           'Enter your email and we will send you a reset link.',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
+                            color: cs.onSurface.withOpacity(0.75),
                             fontSize: 13,
                           ),
                         ),
@@ -174,7 +169,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
                       const SizedBox(height: 18),
 
-                      _label('Email'),
+                      _label(context, 'Email'),
                       const SizedBox(height: 8),
                       _input(
                         controller: emailController,
@@ -190,15 +185,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       if (errorMessage.isNotEmpty)
                         Text(
                           errorMessage,
-                          style: const TextStyle(color: Colors.redAccent),
+                          style: TextStyle(color: cs.error),
                           textAlign: TextAlign.center,
                         ),
                       if (successMessage.isNotEmpty)
                         Text(
                           successMessage,
-                          style: const TextStyle(
-                            color: Colors.lightGreenAccent,
-                          ),
+                          style: TextStyle(color: Colors.green.shade400),
                           textAlign: TextAlign.center,
                         ),
 
@@ -210,8 +203,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         child: ElevatedButton(
                           onPressed: isLoading ? null : _sendReset,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0B2A59),
-                            foregroundColor: Colors.white,
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -241,7 +234,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.white.withOpacity(0.9),
+                          foregroundColor: cs.onSurface.withOpacity(0.85),
                         ),
                         child: const Text(
                           'Back to Login',
@@ -279,7 +272,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(26),
             border: Border.all(color: Colors.white.withOpacity(0.22), width: 1),
           ),
@@ -289,13 +282,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Widget _label(String text) {
+  Widget _label(BuildContext context, String text) {
+    final cs = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.92),
+          color: cs.onSurface.withOpacity(0.9),
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
@@ -324,10 +318,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         obscureText: obscureText,
         textInputAction: textInputAction,
         onSubmitted: onSubmitted,
+
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        cursorColor: Colors.black,
+
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black38),
+          hintStyle: const TextStyle(color: Colors.black45),
           suffixIcon: suffix,
         ),
       ),
